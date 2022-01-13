@@ -1,0 +1,34 @@
+name: build
+
+on:
+  push:
+    paths-ignore:
+      - '*.md'
+
+  pull_request:
+    paths-ignore:
+      - '*.md'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install LLVM and Clang
+        uses: KyleMayes/install-llvm-action@v1
+        with:
+          version: "10.0"
+      - name: Build project
+        run: |
+          mkdir build
+          cd build
+          cmake .. -DLLVM_CONFIG_PATH=`which llvm-config`
+          make
+      - name: Execute the test example
+        run: |
+          cd ${{ github.workspace }}/compilation/examples
+          bash run_example.sh

@@ -1,6 +1,6 @@
-# Contributing to COX
+# Contributing to CuPBoP
 
-Thank you for your interest in contributing to COX!
+Thank you for your interest in contributing to CuPBoP!
 We appreciate all contributions, including but not limited to:
 
 - Add documentation
@@ -10,9 +10,9 @@ We appreciate all contributions, including but not limited to:
 ## How to contribute?
 
 0. (Optional) Open an issue and discuss your idea before start
-1. Fork the latest version COX
+1. Fork the latest version CuPBoP
 2. Commit to the forked repo
-3. Create a Pull Request to COX main branch
+3. Create a Pull Request to CuPBoP main branch
 
 ## Code style
 
@@ -21,14 +21,15 @@ To make sure your contribution is following the correct style,
 we highly recommend you to install [pre-commit](https://pre-commit.com/) before development.
 
 ```bash
-# Python environment is required
+# Python3 environment is required
 pip install pre-commit
 ```
 
 Then, from the repository folder, execute the following instruction:
 
 ```bash
- pre-commit install
+# execute in CuPBoP's root folder
+pre-commit install
 ```
 
 With pre-commit plugin, each local commit will be automatically checked.

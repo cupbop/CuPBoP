@@ -1,10 +1,10 @@
-# COX: CUDA on X86
+# CuPBoP: Cuda for Parallelized and Broad-range Processors
 
 ## Introduction
 
-This project consists of two parts: a series of LLVM passes that
-achieve a SPMD NVVM IR as input, and output the corresponding
-MPMD+SIMD version of LLVM IR which can be execute on CPU devices.
+CuPBoP (Cuda for parallelized and broad-range processors) is a framework
+aims to execute CUDA source code on non-NVIDIA devices,
+including CPU, GPU and other architectures.
 
 ## Install
 
@@ -22,8 +22,8 @@ MPMD+SIMD version of LLVM IR which can be execute on CPU devices.
 1. Clone from github
 
     ```bash
-    git clone https://github.com/drcut/open_source_template
-    cd open_source_template
+    git clone https://github.com/cupbop/CuPBoP
+    cd CuPBoP
     ```
 
 2. Build the transformer for NVVM IR to LLVM IR for X86
@@ -55,8 +55,12 @@ g++ ../compilation/examples/vecadd/host.cpp \
 ./vecadd_example
 ```
 
+## Contribution
+
+We sincerely appreciate all kinds of contributions.
+Please refer to [CONTRIBUTING](docs/CONTRIBUTING.md) for the contributing guideline.
+
 ## Author
 
-[Ruobing Han](https://drcut.github.io/) is a CS phd student in
-Georgia Institute Technology, under the supervision
-of Prof. [Hyesoon Kim](https://www.cc.gatech.edu/~hyesoon/).
+* [Ruobing Han](https://drcut.github.io/)
+* [Hyesoon Kim](https://www.cc.gatech.edu/~hyesoon/)
