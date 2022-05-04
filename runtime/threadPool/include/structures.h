@@ -1,8 +1,9 @@
 #ifndef C_STRUCTURES_H
 #define C_STRUCTURES_H
 
+#include "cuda_runtime.h"
 #include "pthread.h"
-#define cudaStream_t cstreamData
+
 typedef struct device {
   int max_compute_units;
   int device_id;
@@ -27,6 +28,7 @@ typedef struct scheduler_pool {
   size_t idle_threads;
 
   pthread_cond_t wake_pool;
+  pthread_cond_t wake_host;
 
   int threadpool_shutdown_requested;
 
@@ -85,17 +87,6 @@ typedef struct input_arg {
   // so that we can parse the arguments p
 } cu_input;
 
-struct dim3 {
-  size_t x;
-  size_t y;
-  size_t z;
-  dim3(int d1) {
-    x = d1;
-    y = z = 1;
-  }
-  dim3() { x = y = z = 1; }
-};
-
 enum StreamType {
   DEFAULT,
   LOW,
@@ -146,7 +137,7 @@ typedef struct kernel {
 
   size_t shared_mem;
 
-  cstreamData *stream;
+  cudaStream_t stream;
 
   struct event *barrier;
 
@@ -161,7 +152,8 @@ typedef struct kernel {
   // current blockId
   int blockId;
 
-  void *shared_mem_loc;
+  // execute multiple blocks per fetch
+  int gpu_block_to_execute_per_cpu_thread;
 
 } cu_kernel;
 
@@ -187,5 +179,12 @@ typedef struct kernel_image_arg {
   size_t size;
   unsigned int index;
 } k_arg;
+
+typedef struct callParams {
+  dim3 gridDim;
+  dim3 blockDim;
+  size_t shareMem;
+  void *stream;
+} callParams;
 
 #endif // HEADER_FILE

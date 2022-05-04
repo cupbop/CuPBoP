@@ -1,5 +1,6 @@
 #include "tool.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvm/IR/Constants.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/IRBuilder.h"
@@ -187,7 +188,52 @@ void remove_cuda_built_in(llvm::Module *M) {
   }
 }
 
-void replace_built_in_function(llvm::Module *M, int *grid_dim, int *block_dim) {
+// copied from POCL
+static void breakConstantExpressions(llvm::Value *Val, llvm::Function *Func) {
+  std::vector<llvm::Value *> Users(Val->user_begin(), Val->user_end());
+  for (auto *U : Users) {
+    if (auto *CE = llvm::dyn_cast<llvm::ConstantExpr>(U)) {
+      // First, make sure no users of this constant expression are themselves
+      // constant expressions.
+      breakConstantExpressions(U, Func);
+      // Convert this constant expression to an instruction.
+      llvm::Instruction *I = CE->getAsInstruction();
+      I->insertBefore(&*Func->begin()->begin());
+      CE->replaceAllUsesWith(I);
+      CE->destroyConstant();
+    }
+  }
+}
+
+void replace_dynamic_shared_memory(llvm::Module *M) {
+  for (Module::iterator i = M->begin(), e = M->end(); i != e; ++i) {
+    Function *F = &(*i);
+    if (!isKernelFunction(M, F))
+      continue;
+    for (Module::global_iterator i = M->global_begin(), e = M->global_end();
+         i != e; ++i) {
+      breakConstantExpressions(&*i, F);
+    }
+    auto dynamic_shared_memory_addr =
+        M->getGlobalVariable("dynamic_shared_memory");
+    if (!dynamic_shared_memory_addr) {
+      return;
+    }
+    auto load_shared_memory =
+        new LoadInst(dynamic_shared_memory_addr, "new_load");
+    auto new_bit_cast =
+        new BitCastInst(load_shared_memory,
+                        dynamic_shared_memory_addr->getType(), "new_bit_cast");
+    new_bit_cast->insertBefore(&*F->begin()->begin());
+    load_shared_memory->insertBefore(new_bit_cast);
+    dynamic_shared_memory_addr->replaceUsesWithIf(new_bit_cast, [&](Use &U) {
+      auto *Instr = dyn_cast<Instruction>(U.getUser());
+      return Instr != new_bit_cast && Instr != load_shared_memory;
+    });
+  }
+}
+
+void replace_built_in_function(llvm::Module *M) {
   LLVMContext &context = M->getContext();
   auto I32 = llvm::Type::getInt32Ty(context);
   std::vector<llvm::Instruction *> need_remove;
@@ -203,28 +249,60 @@ void replace_built_in_function(llvm::Module *M, int *grid_dim, int *block_dim) {
     auto local_intra_warp_idx =
         builder.CreateAlloca(global_intra_warp_idx->getType()->getElementType(),
                              0, "local_intra_warp_idx");
-    global_intra_warp_idx->replaceAllUsesWith(local_intra_warp_idx);
+    global_intra_warp_idx->replaceUsesWithIf(local_intra_warp_idx, [&](Use &U) {
+      auto *Instr = dyn_cast<Instruction>(U.getUser());
+      return Instr->getParent()->getParent()->getName().str() == func_name;
+    });
+
     auto global_inter_warp_idx =
         F->getParent()->getGlobalVariable("inter_warp_index");
+
     auto local_inter_warp_idx =
         builder.CreateAlloca(global_inter_warp_idx->getType()->getElementType(),
                              0, "local_inter_warp_idx");
-    global_inter_warp_idx->replaceAllUsesWith(local_inter_warp_idx);
+
+    builder.CreateStore(ConstantInt::get(I32, 0), local_inter_warp_idx);
+
+    global_inter_warp_idx->replaceUsesWithIf(local_inter_warp_idx, [&](Use &U) {
+      auto *Instr = dyn_cast<Instruction>(U.getUser());
+      return Instr->getParent()->getParent()->getName().str() == func_name;
+    });
 
     for (auto BB = F->begin(); BB != F->end(); ++BB) {
       for (auto BI = BB->begin(); BI != BB->end(); BI++) {
         if (auto Load = dyn_cast<LoadInst>(BI)) {
           auto load_from = Load->getOperand(0);
-          if (load_from == F->getParent()->getGlobalVariable("block_size")) {
-            Load->replaceAllUsesWith(ConstantInt::get(
-                I32, block_dim[0] * block_dim[1] * block_dim[2]));
-            need_remove.push_back(Load);
-          }
         } else if (auto Call = dyn_cast<CallInst>(BI)) {
           if (Call->getCalledFunction()) {
             auto func_name = Call->getCalledFunction()->getName().str();
-            if (func_name == "llvm.nvvm.read.ptx.sreg.tid.x") {
+            if (func_name == "llvm.nvvm.read.ptx.sreg.ntid.x" ||
+                func_name ==
+                    "_ZN25__cuda_builtin_blockDim_t17__fetch_builtin_xEv") {
+              auto block_size_addr = M->getGlobalVariable("block_size_x");
+              IRBuilder<> builder(context);
+              builder.SetInsertPoint(Call);
+              auto val = builder.CreateLoad(block_size_addr);
+              Call->replaceAllUsesWith(val);
+              need_remove.push_back(Call);
+            } else if (func_name == "llvm.nvvm.read.ptx.sreg.ntid.y") {
+              auto block_size_addr = M->getGlobalVariable("block_size_y");
+              IRBuilder<> builder(context);
+              builder.SetInsertPoint(Call);
+              auto val = builder.CreateLoad(block_size_addr);
+              Call->replaceAllUsesWith(val);
+              need_remove.push_back(Call);
+            } else if (func_name == "llvm.nvvm.read.ptx.sreg.ntid.z") {
+              auto block_size_addr = M->getGlobalVariable("block_size_z");
+              IRBuilder<> builder(context);
+              builder.SetInsertPoint(Call);
+              auto val = builder.CreateLoad(block_size_addr);
+              Call->replaceAllUsesWith(val);
+              need_remove.push_back(Call);
+            } else if (func_name == "llvm.nvvm.read.ptx.sreg.tid.x" ||
+                       func_name == "_ZN26__cuda_builtin_threadIdx_t17__fetch_"
+                                    "builtin_xEv") {
               // replace it by warp_id
+
               IRBuilder<> builder(context);
               builder.SetInsertPoint(Call);
 
@@ -234,12 +312,11 @@ void replace_built_in_function(llvm::Module *M, int *grid_dim, int *block_dim) {
               thread_idx = builder.CreateBinOp(
                   Instruction::Add, builder.CreateLoad(local_intra_warp_idx),
                   thread_idx, "thread_idx");
-              if (block_dim[1] != 1 || block_dim[2] != 1) {
-                printf("block y: %d block z: %d\n", block_dim[1], block_dim[2]);
-                thread_idx = builder.CreateBinOp(
-                    Instruction::SRem, thread_idx,
-                    ConstantInt::get(I32, block_dim[0]), "thread_id_x");
-              }
+
+              thread_idx = builder.CreateBinOp(
+                  Instruction::SRem, thread_idx,
+                  builder.CreateLoad(M->getGlobalVariable("block_size_x")),
+                  "thread_id_x");
 
               Call->replaceAllUsesWith(thread_idx);
               need_remove.push_back(Call);
@@ -257,63 +334,61 @@ void replace_built_in_function(llvm::Module *M, int *grid_dim, int *block_dim) {
               // tidy = tid / block_dim.x
               thread_idx = builder.CreateBinOp(
                   Instruction::SDiv, thread_idx,
-                  ConstantInt::get(I32, block_dim[0]),
-                  // builder.CreateLoad(M->getGlobalVariable("block_size_x")),
+                  builder.CreateLoad(M->getGlobalVariable("block_size_x")),
                   "thread_id_y");
-
               Call->replaceAllUsesWith(thread_idx);
               need_remove.push_back(Call);
             } else if (func_name == "llvm.nvvm.read.ptx.sreg.tid.z") {
-              printf("[WARNING] We DO NOT support multi-dim block\n");
+              printf("[WARNING] We DO NOT support triple-dim block\n");
+              exit(1);
               auto zero = ConstantInt::get(I32, 0);
               Call->replaceAllUsesWith(zero);
               need_remove.push_back(Call);
-            } else if (func_name == "llvm.nvvm.read.ptx.sreg.ctaid.x") {
-              auto block_index_addr = M->getGlobalVariable("block_index");
+            } else if (func_name == "llvm.nvvm.read.ptx.sreg.ctaid.x" ||
+                       func_name == "_ZN25__cuda_builtin_blockIdx_t17__fetch_"
+                                    "builtin_xEv") {
+              auto block_index_addr = M->getGlobalVariable("block_index_x");
               IRBuilder<> builder(context);
               builder.SetInsertPoint(Call);
               auto block_idx = builder.CreateLoad(block_index_addr);
               Call->replaceAllUsesWith(block_idx);
               need_remove.push_back(Call);
-            } else if (func_name == "llvm.nvvm.read.ptx.sreg.ctaid.y" ||
-                       func_name == "llvm.nvvm.read.ptx.sreg.ctaid.z") {
-              printf("[WARNING We DO NOT support multi-dim grid\n");
-              auto zero = ConstantInt::get(I32, 0);
-              Call->replaceAllUsesWith(zero);
-              need_remove.push_back(Call);
-            } else if (func_name == "llvm.nvvm.read.ptx.sreg.ntid.x") {
-              auto block_size_addr = M->getGlobalVariable("block_size_x");
+            } else if (func_name == "llvm.nvvm.read.ptx.sreg.ctaid.y") {
+              auto block_index_addr = M->getGlobalVariable("block_index_y");
               IRBuilder<> builder(context);
               builder.SetInsertPoint(Call);
-              auto block_size = ConstantInt::get(I32, block_dim[0]);
-              Call->replaceAllUsesWith(block_size);
+              auto block_idx = builder.CreateLoad(block_index_addr);
+              Call->replaceAllUsesWith(block_idx);
               need_remove.push_back(Call);
-            } else if (func_name == "llvm.nvvm.read.ptx.sreg.ntid.y") {
-              auto block_size_addr = M->getGlobalVariable("block_size_y");
+            } else if (func_name == "llvm.nvvm.read.ptx.sreg.ctaid.z") {
+              auto block_index_addr = M->getGlobalVariable("block_index_z");
               IRBuilder<> builder(context);
               builder.SetInsertPoint(Call);
-              auto block_size = ConstantInt::get(I32, block_dim[1]);
-              Call->replaceAllUsesWith(block_size);
+              auto block_idx = builder.CreateLoad(block_index_addr);
+              Call->replaceAllUsesWith(block_idx);
               need_remove.push_back(Call);
-            } else if (func_name == "llvm.nvvm.read.ptx.sreg.ntid.z") {
-              auto block_size_addr = M->getGlobalVariable("block_size_z");
+            } else if (func_name == "llvm.nvvm.read.ptx.sreg.nctaid.x" ||
+                       func_name == "_ZN24__cuda_builtin_gridDim_t17__fetch_"
+                                    "builtin_xEv") {
+              auto grid_size_addr = M->getGlobalVariable("grid_size_x");
               IRBuilder<> builder(context);
               builder.SetInsertPoint(Call);
-              auto block_size = ConstantInt::get(I32, block_dim[2]);
-              Call->replaceAllUsesWith(block_size);
-              need_remove.push_back(Call);
-            } else if (func_name == "llvm.nvvm.read.ptx.sreg.nctaid.x") {
-              auto grid_size_addr = M->getGlobalVariable("grid_size");
-              IRBuilder<> builder(context);
-              builder.SetInsertPoint(Call);
-              auto grid_size = ConstantInt::get(I32, grid_dim[0]);
+              auto grid_size = builder.CreateLoad(grid_size_addr);
               Call->replaceAllUsesWith(grid_size);
               need_remove.push_back(Call);
-            } else if (func_name == "llvm.nvvm.read.ptx.sreg.nctaid.y" ||
-                       func_name == "llvm.nvvm.read.ptx.sreg.nctaid.z") {
-              printf("[WARNING We DO NOT support multi-dim grid\n");
-              auto one = ConstantInt::get(I32, 1);
-              Call->replaceAllUsesWith(one);
+            } else if (func_name == "llvm.nvvm.read.ptx.sreg.nctaid.y") {
+              auto grid_size_addr = M->getGlobalVariable("grid_size_y");
+              IRBuilder<> builder(context);
+              builder.SetInsertPoint(Call);
+              auto grid_size = builder.CreateLoad(grid_size_addr);
+              Call->replaceAllUsesWith(grid_size);
+              need_remove.push_back(Call);
+            } else if (func_name == "llvm.nvvm.read.ptx.sreg.nctaid.z") {
+              auto grid_size_addr = M->getGlobalVariable("grid_size_z");
+              IRBuilder<> builder(context);
+              builder.SetInsertPoint(Call);
+              auto grid_size = builder.CreateLoad(grid_size_addr);
+              Call->replaceAllUsesWith(grid_size);
               need_remove.push_back(Call);
             }
           }
@@ -329,6 +404,98 @@ void replace_built_in_function(llvm::Module *M, int *grid_dim, int *block_dim) {
             auto intra_warp_index = builder.CreateLoad(local_intra_warp_idx);
             Call->replaceAllUsesWith(intra_warp_index);
             need_remove.push_back(Call);
+          }
+        }
+      }
+    }
+  }
+  for (Module::iterator i = M->begin(), e = M->end(); i != e; ++i) {
+    Function *F = &(*i);
+    for (auto BB = F->begin(); BB != F->end(); ++BB) {
+      for (auto BI = BB->begin(); BI != BB->end(); BI++) {
+        if (auto Call = dyn_cast<CallInst>(BI)) {
+          if (Call->getCalledFunction()) {
+            auto func_name = Call->getCalledFunction()->getName().str();
+            auto callFn = Call->getCalledFunction();
+            if (func_name == "vprintf") {
+              /*
+               * replace CUDA's printf to C's printf
+               * CUDA:
+               * %0 = tail call i32 @vprintf(i8* getelementptr inbounds ([19 x
+               * i8], [19 x i8]* @.str, i64 0, i64 0), i8* null)
+               * C: %call1 = call i32 (i8*, ...) @printf(i8* getelementptr
+               * inbounds ([45 x i8], [45 x i8]* @.str.1, i64 0, i64 0))
+               */
+              // find/create C's printf function
+              std::vector<llvm::Type *> args;
+              args.push_back(llvm::Type::getInt8PtrTy(context));
+              llvm::FunctionType *printfType =
+                  FunctionType::get(I32, args, true);
+
+              llvm::FunctionCallee _f =
+                  M->getOrInsertFunction("printf", printfType);
+              llvm::Function *func_printf =
+                  llvm::cast<llvm::Function>(_f.getCallee());
+              // construct argument(s)
+              std::vector<Value *> printf_args;
+              // first argument is same between CUDA and C
+              auto placeholder = Call->getArgOperand(0);
+              printf_args.push_back(placeholder);
+              // insert arguments
+              auto compressed_args = Call->getArgOperand(1);
+              if (auto BC = dyn_cast<BitCastInst>(compressed_args)) {
+                auto src_alloc = BC->getOperand(0);
+                auto SrcPointTy =
+                    dyn_cast<PointerType>(BC->getOperand(0)->getType());
+                auto SrcTy = SrcPointTy->getElementType();
+                // reverse the bitcast
+                auto reverse_BC = new BitCastInst(BC, SrcPointTy, "", Call);
+                assert(SrcTy->isStructTy() == 1);
+                auto StructTy = dyn_cast<StructType>(SrcTy);
+                for (int i = 0; i < StructTy->getNumElements(); i++) {
+                  std::vector<Value *> Indices;
+                  Indices.push_back(ConstantInt::get(I32, 0));
+                  Indices.push_back(ConstantInt::get(I32, i));
+                  auto new_GEP = GetElementPtrInst::Create(NULL, // Pointee type
+                                                           src_alloc, // Alloca
+                                                           Indices,   // Indices
+                                                           "", Call);
+                  auto new_load = new LoadInst(new_GEP, "", Call);
+                  printf_args.push_back(new_load);
+                }
+              }
+              auto c_printf_inst =
+                  llvm::CallInst::Create(func_printf, printf_args, "", Call);
+              // insert
+              Call->replaceAllUsesWith(c_printf_inst);
+              need_remove.push_back(Call);
+            } else if (func_name == "__nv_fast_log2f" ||
+                       func_name == "__nv_log2f" ||
+                       func_name == "__nv_fast_powf" ||
+                       func_name == "__nv_powf" || func_name == "__nv_logf" ||
+                       func_name == "__nv_expf" || func_name == "__nv_fabsf" ||
+                       func_name == "__nv_log10f" ||
+                       func_name == "__nv_fmodf" || func_name == "__nv_sqrt" ||
+                       func_name == "__nv_sqrtf" || func_name == "__nv_exp" ||
+                       func_name == "__nv_isnanf" ||
+                       func_name == "__nv_isinff" || func_name == "__nv_powi" ||
+                       func_name == "__nv_powif") {
+              Call->getCalledFunction()->deleteBody();
+            } else if (func_name == "llvm.nvvm.fma.rn.d") {
+              Call->getCalledFunction()->setName("__nvvm_fma_rn_d");
+            } else if (func_name == "llvm.nvvm.d2i.lo") {
+              Call->getCalledFunction()->setName("__nvvm_d2i_lo");
+            } else if (func_name == "llvm.nvvm.d2i.hi") {
+              Call->getCalledFunction()->setName("__nvvm_d2i_hi");
+            } else if (func_name == "llvm.nvvm.add.rn.d") {
+              Call->getCalledFunction()->setName("__nvvm_add_rn_d");
+            } else if (func_name == "llvm.nvvm.lohi.i2d") {
+              Call->getCalledFunction()->setName("__nvvm_lohi_i2d");
+            } else if (func_name == "llvm.nvvm.fabs.f") {
+              Call->getCalledFunction()->setName("__nvvm_fabs_f");
+            } else if (func_name == "llvm.nvvm.mul24.i") {
+              Call->getCalledFunction()->setName("__nvvm_mul24_i");
+            }
           }
         }
       }
@@ -382,6 +549,8 @@ bool has_warp_barrier(llvm::BasicBlock *B) {
     Instruction *inst = &(*i);
     llvm::CallInst *Call = llvm::dyn_cast<llvm::CallInst>(inst);
     if (Call) {
+      if (Call->isInlineAsm())
+        continue;
       auto func_name = Call->getCalledFunction()->getName().str();
       if (func_name == "llvm.nvvm.bar.warp.sync") {
         return true;
@@ -396,6 +565,8 @@ bool has_barrier(llvm::BasicBlock *B) {
     Instruction *inst = &(*i);
     llvm::CallInst *Call = llvm::dyn_cast<llvm::CallInst>(inst);
     if (Call) {
+      if (Call->isInlineAsm())
+        continue;
       auto func_name = Call->getCalledFunction()->getName().str();
       if (func_name == "llvm.nvvm.barrier0" ||
           func_name == "llvm.nvvm.bar.warp.sync" ||
@@ -412,6 +583,8 @@ bool has_block_barrier(llvm::BasicBlock *B) {
     Instruction *inst = &(*i);
     llvm::CallInst *Call = llvm::dyn_cast<llvm::CallInst>(inst);
     if (Call) {
+      if (Call->isInlineAsm())
+        continue;
       auto func_name = Call->getCalledFunction()->getName().str();
       if (func_name == "llvm.nvvm.barrier0" ||
           func_name == "llvm.nvvm.barrier.sync") {
@@ -478,3 +651,21 @@ bool find_barrier_in_region(llvm::BasicBlock *start, llvm::BasicBlock *end) {
   }
   return 0;
 }
+
+/*
+  Print IR to String Output for Debugging Purposes
+*/
+// void printModule(llvm::Module *M) {
+//   std::string str;
+//   llvm::raw_string_ostream ss(str);
+//   std::cout << "### Printing Module ###" << std::endl;
+//   for (Module::iterator i = M->begin(), e = M->end(); i != e; ++i) {
+//     Function *F = &(*i);
+//     auto func_name = F->getName().str();
+//     std::cout << func_name << std::endl;
+//     for (Function::iterator b = F->begin(); b != F->end(); ++b) {
+//       BasicBlock *B = &(*b);
+//       errs() << *B;
+//     }
+//   }
+// }

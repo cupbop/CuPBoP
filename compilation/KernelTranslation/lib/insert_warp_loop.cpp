@@ -67,9 +67,15 @@ std::map<std::string, llvm::Instruction *> contextArrays;
 int tempInstructionIndex = 0;
 int need_nested_loop;
 
+// adding multiple kenerl in file support
+
 bool ShouldNotBeContextSaved(llvm::Instruction *instr) {
   if (isa<BranchInst>(instr))
     return true;
+  // if (isa<AddrSpaceCastInst>(instr))
+  //   return true;
+  // if (isa<CastInst>(instr))
+  //   return true;
 
   llvm::Module *M = instr->getParent()->getParent()->getParent();
   llvm::LoadInst *load = dyn_cast<llvm::LoadInst>(instr);
@@ -111,6 +117,7 @@ llvm::Instruction *GetContextArray(llvm::Instruction *instruction,
     return contextArrays[varName];
 
   BasicBlock &bb = instruction->getParent()->getParent()->getEntryBlock();
+
   IRBuilder<> builder(&*(bb.getFirstInsertionPt()));
   Function *FF = instruction->getParent()->getParent();
   Module *M = instruction->getParent()->getParent()->getParent();
@@ -127,6 +134,7 @@ llvm::Instruction *GetContextArray(llvm::Instruction *instruction,
 
   Type *AllocType = elementType;
   AllocaInst *InstCast = dyn_cast<AllocaInst>(instruction);
+  /*
   if (InstCast) {
     unsigned Alignment = InstCast->getAlignment();
 
@@ -166,7 +174,7 @@ llvm::Instruction *GetContextArray(llvm::Instruction *instruction,
       }
     }
   }
-
+  */
   llvm::Value *ItemSize = nullptr;
   llvm::AllocaInst *Alloca = nullptr;
 
@@ -354,12 +362,35 @@ void handle_local_variable_intra_warp(std::vector<ParallelRegion> PRs) {
     auto F = PRs[0].start_block->getParent();
     for (auto bb = F->begin(); bb != F->end(); bb++) {
       for (auto ii = bb->begin(); ii != bb->end(); ii++) {
-        if (isa<AllocaInst>(&(*ii)))
-          instruction_to_fix.push_back(&(*ii));
+        if (isa<AllocaInst>(&(*ii))) {
+          auto alloc = dyn_cast<AllocaInst>(&(*ii));
+          // Do not duplicate var used outside PRs
+          bool used_in_non_PR = false;
+          for (Instruction::use_iterator ui = alloc->use_begin(),
+                                         ue = alloc->use_end();
+               ui != ue; ++ui) {
+            llvm::Instruction *user = dyn_cast<Instruction>(ui->getUser());
+            auto user_block = user->getParent();
+            bool find_in_PR = false;
+            for (auto PR : PRs) {
+              if (PR.wrapped_block.find(user_block) != PR.wrapped_block.end()) {
+                find_in_PR = true;
+                break;
+              }
+            }
+            if (find_in_PR == false) {
+              used_in_non_PR = true;
+              break;
+            }
+          }
+          if (!used_in_non_PR) {
+            instruction_to_fix.push_back(alloc);
+          }
+        }
       }
-      for (auto inst : instruction_to_fix) {
-        AddContextSaveRestore(inst, intra_warp_loop);
-      }
+    }
+    for (auto inst : instruction_to_fix) {
+      AddContextSaveRestore(inst, intra_warp_loop);
     }
   }
 
@@ -380,10 +411,8 @@ void handle_local_variable_intra_warp(std::vector<ParallelRegion> PRs) {
       for (llvm::BasicBlock::iterator instr = bb->begin(); instr != bb->end();
            ++instr) {
         llvm::Instruction *instruction = &*instr;
-
         if (ShouldNotBeContextSaved(instruction))
           continue;
-
         for (Instruction::use_iterator ui = instruction->use_begin(),
                                        ue = instruction->use_end();
              ui != ue; ++ui) {
@@ -582,6 +611,8 @@ void remove_barrier(llvm::Function *F, bool intra_warp_loop) {
   for (auto BB = F->begin(); BB != F->end(); ++BB) {
     for (auto BI = BB->begin(); BI != BB->end(); BI++) {
       if (auto Call = dyn_cast<CallInst>(BI)) {
+        if (Call->isInlineAsm())
+          continue;
         auto func_name = Call->getCalledFunction()->getName().str();
         if (func_name == "llvm.nvvm.bar.warp.sync") {
           need_remove.push_back(Call);
@@ -648,6 +679,8 @@ public:
       bool has_barrier = 0;
       for (auto i = current->begin(), e = current->end(); i != e; ++i) {
         if (llvm::CallInst *call_inst = llvm::dyn_cast<llvm::CallInst>(&(*i))) {
+          if (call_inst->isInlineAsm())
+            continue;
           auto func_name = call_inst->getCalledFunction()->getName().str();
           if (func_name == "llvm.nvvm.barrier0" ||
               func_name == "llvm.nvvm.barrier.sync")
@@ -761,6 +794,8 @@ public:
     for (Function::iterator s = F->begin(); s != F->end(); s++) {
       if (llvm::CallInst *call_inst =
               llvm::dyn_cast<llvm::CallInst>(s->begin())) {
+        if (call_inst->isInlineAsm())
+          continue;
         auto func_name = call_inst->getCalledFunction()->getName().str();
         if (func_name == "llvm.nvvm.barrier0" ||
             func_name == "llvm.nvvm.barrier.sync") {
@@ -787,6 +822,12 @@ public:
     if (!isKernelFunction(F.getParent(), &F))
       return 0;
 
+    auto func_name = (&F)->getName().str();
+    // clear context array, temp variables for new kernel function
+    contextArrays.clear();
+    tempInstructionIds.clear();
+    tempInstructionIndex = 0;
+
     DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
     PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
 
@@ -794,11 +835,11 @@ public:
     auto parallel_regions = getParallelRegions(&F, intra_warp_loop);
     assert(!parallel_regions.empty() && "can not find any parallel regions\n");
     // print_parallel_region(parallel_regions);
-    add_warp_loop(parallel_regions, intra_warp_loop);
 
     if (intra_warp_loop) {
       handle_local_variable_intra_warp(parallel_regions);
     }
+    add_warp_loop(parallel_regions, intra_warp_loop);
     remove_barrier(&F, intra_warp_loop);
     return 1;
   }
@@ -816,6 +857,8 @@ bool has_warp_barrier(llvm::Module *M) {
     for (auto BB = F->begin(); BB != F->end(); ++BB) {
       for (auto BI = BB->begin(); BI != BB->end(); BI++) {
         if (auto Call = dyn_cast<CallInst>(BI)) {
+          if (Call->isInlineAsm())
+            continue;
           auto func_name = Call->getCalledFunction()->getName().str();
           if (func_name == "llvm.nvvm.bar.warp.sync") {
             return true;
@@ -841,8 +884,8 @@ void insert_warp_loop(llvm::Module *M) {
     // only need a single loop, with size=block_size
     Passes.add(new InsertWarpLoopPass(intra_warp));
     Passes.run(*M);
-    // remove all barriers
-    for (auto F = M->begin(); F != M->end(); ++F)
-      remove_barrier(dyn_cast<llvm::Function>(F), false);
   }
+  // remove all barriers
+  for (auto F = M->begin(); F != M->end(); ++F)
+    remove_barrier(dyn_cast<llvm::Function>(F), false);
 }

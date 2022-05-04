@@ -1,6 +1,7 @@
 #include "init.h"
 #include "memory_hierarchy.h"
 #include "tool.h"
+#include <fstream>
 #include <iostream>
 #include <set>
 
@@ -23,7 +24,8 @@
 
 using namespace llvm;
 
-void inline_func_vote(llvm::Module *M) {
+bool inline_warp_level_func(llvm::Module *M) {
+  bool changed = false;
   std::set<llvm::Function *> need_remove;
 
   for (Module::iterator i = M->begin(), e = M->end(); i != e; ++i) {
@@ -36,10 +38,13 @@ void inline_func_vote(llvm::Module *M) {
       for (BasicBlock::iterator BI = I->begin(), BE = I->end(); BI != BE;) {
         if (CallInst *c = dyn_cast<CallInst>(BI++)) {
           if (c->getCalledFunction()) {
-            if (c->getCalledFunction()->getName().str() == "_Z10__any_syncji") {
+            auto func_name = c->getCalledFunction()->getName().str();
+            if (func_name == "_Z10__any_syncji" ||
+                func_name.find("shfl_down_sync") != std::string::npos) {
               InlineFunctionInfo IFI;
               InlineFunction(c, IFI);
               need_remove.insert(c->getCalledFunction());
+              changed = true;
             }
           }
         }
@@ -50,6 +55,56 @@ void inline_func_vote(llvm::Module *M) {
     f->dropAllReferences();
     f->eraseFromParent();
   }
+  return changed;
+}
+
+bool find_sreg_inst(llvm::Function *F) {
+  Function::iterator I = F->begin();
+  for (Function::iterator E = F->end(); I != E; ++I) {
+    for (BasicBlock::iterator BI = I->begin(), BE = I->end(); BI != BE;) {
+      if (CallInst *c = dyn_cast<CallInst>(BI++)) {
+        if (c->getCalledFunction()) {
+          auto func_name = c->getCalledFunction()->getName().str();
+          if (func_name.find("llvm.nvvm.read.ptx.sreg.") != std::string::npos) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
+bool inline_func_with_tid(llvm::Module *M) {
+  bool changed = false;
+  std::set<llvm::Function *> need_remove;
+  std::set<CallInst *> need_inline;
+  for (Module::iterator i = M->begin(), e = M->end(); i != e; ++i) {
+    Function *F = &(*i);
+    auto func_name = F->getName().str();
+    Function::iterator I = F->begin();
+    for (Function::iterator E = F->end(); I != E; ++I) {
+      for (BasicBlock::iterator BI = I->begin(), BE = I->end(); BI != BE;) {
+        if (CallInst *c = dyn_cast<CallInst>(BI++)) {
+          if (c->getCalledFunction()) {
+            if (find_sreg_inst(c->getCalledFunction())) {
+              printf("inline: %s\n",
+                     c->getCalledFunction()->getName().str().c_str());
+              need_inline.insert(c);
+              need_remove.insert(c->getCalledFunction());
+            }
+          }
+        }
+      }
+    }
+  }
+  if (!need_inline.empty()) {
+    changed = true;
+  }
+  for (auto c : need_inline) {
+    InlineFunctionInfo IFI;
+    InlineFunction(c, IFI);
+  }
+  return changed;
 }
 
 void create_global_variable(llvm::Module *M) {
@@ -70,21 +125,33 @@ void create_global_variable(llvm::Module *M) {
                            llvm::GlobalValue::GeneralDynamicTLSModel, 0, false);
   new llvm::GlobalVariable(*M, I32, false, llvm::GlobalValue::ExternalLinkage,
                            NULL, "block_size", NULL,
-                           llvm::GlobalValue::NotThreadLocal, 0, false);
+                           llvm::GlobalValue::GeneralDynamicTLSModel, 0, false);
   new llvm::GlobalVariable(*M, I32, false, llvm::GlobalValue::ExternalLinkage,
                            NULL, "block_size_x", NULL,
-                           llvm::GlobalValue::NotThreadLocal, 0, false);
+                           llvm::GlobalValue::GeneralDynamicTLSModel, 0, false);
   new llvm::GlobalVariable(*M, I32, false, llvm::GlobalValue::ExternalLinkage,
                            NULL, "block_size_y", NULL,
-                           llvm::GlobalValue::NotThreadLocal, 0, false);
+                           llvm::GlobalValue::GeneralDynamicTLSModel, 0, false);
   new llvm::GlobalVariable(*M, I32, false, llvm::GlobalValue::ExternalLinkage,
                            NULL, "block_size_z", NULL,
-                           llvm::GlobalValue::NotThreadLocal, 0, false);
+                           llvm::GlobalValue::GeneralDynamicTLSModel, 0, false);
   new llvm::GlobalVariable(*M, I32, false, llvm::GlobalValue::ExternalLinkage,
-                           NULL, "grid_size", NULL,
-                           llvm::GlobalValue::NotThreadLocal, 0, false);
+                           NULL, "grid_size_x", NULL,
+                           llvm::GlobalValue::GeneralDynamicTLSModel, 0, false);
   new llvm::GlobalVariable(*M, I32, false, llvm::GlobalValue::ExternalLinkage,
-                           NULL, "block_index", NULL,
+                           NULL, "grid_size_y", NULL,
+                           llvm::GlobalValue::GeneralDynamicTLSModel, 0, false);
+  new llvm::GlobalVariable(*M, I32, false, llvm::GlobalValue::ExternalLinkage,
+                           NULL, "grid_size_z", NULL,
+                           llvm::GlobalValue::GeneralDynamicTLSModel, 0, false);
+  new llvm::GlobalVariable(*M, I32, false, llvm::GlobalValue::ExternalLinkage,
+                           NULL, "block_index_x", NULL,
+                           llvm::GlobalValue::GeneralDynamicTLSModel, 0, false);
+  new llvm::GlobalVariable(*M, I32, false, llvm::GlobalValue::ExternalLinkage,
+                           NULL, "block_index_y", NULL,
+                           llvm::GlobalValue::GeneralDynamicTLSModel, 0, false);
+  new llvm::GlobalVariable(*M, I32, false, llvm::GlobalValue::ExternalLinkage,
+                           NULL, "block_index_z", NULL,
                            llvm::GlobalValue::GeneralDynamicTLSModel, 0, false);
   // TLS variable used for warp-level collective operators
   new llvm::GlobalVariable(
@@ -224,24 +291,23 @@ bool lower_constant_expr(llvm::Module *M) {
           auto load_from = load_inst->getOperand(0);
           if (auto get_element_ptr = dyn_cast<llvm::ConstantExpr>(load_from)) {
             modified = true;
-            auto ReplInst = get_element_ptr->getAsInstruction();
-            ReplInst->insertBefore(load_inst);
             std::vector<Instruction *> Users;
-            // Do not replace use during iteration of use. Do it in another loop
             for (auto U : get_element_ptr->users()) {
               if (auto InstUser = dyn_cast<Instruction>(U)) {
                 Users.push_back(InstUser);
               }
             }
-            for (auto &User : Users)
+            for (auto &User : Users) {
+              auto ReplInst = get_element_ptr->getAsInstruction();
+              ReplInst->insertBefore(User);
               User->replaceUsesOfWith(get_element_ptr, ReplInst);
+            }
           }
         } else if (auto store_inst = dyn_cast<llvm::StoreInst>(BI)) {
           auto store_to = store_inst->getOperand(1);
           if (auto addr_cast = dyn_cast<llvm::ConstantExpr>(store_to)) {
             modified = true;
-            auto ReplInst = addr_cast->getAsInstruction();
-            ReplInst->insertBefore(store_inst);
+
             std::vector<Instruction *> Users;
             // Do not replace use during iteration of use. Do it in another loop
             for (auto U : addr_cast->users()) {
@@ -249,16 +315,19 @@ bool lower_constant_expr(llvm::Module *M) {
                 Users.push_back(InstUser);
               }
             }
-            for (auto &User : Users)
+            for (auto &User : Users) {
+              auto ReplInst = addr_cast->getAsInstruction();
+              ReplInst->insertBefore(User);
               User->replaceUsesOfWith(addr_cast, ReplInst);
+            }
           }
         } else if (auto get_element_ptr =
                        dyn_cast<llvm::GetElementPtrInst>(BI)) {
           auto get_from = get_element_ptr->getOperand(0);
           if (auto addr_cast = dyn_cast<llvm::ConstantExpr>(get_from)) {
             modified = true;
-            auto ReplInst = addr_cast->getAsInstruction();
-            ReplInst->insertBefore(get_element_ptr);
+            // auto ReplInst = addr_cast->getAsInstruction();
+            // ReplInst->insertBefore(get_element_ptr);
             std::vector<Instruction *> Users;
             // Do not replace use during iteration of use. Do it in another loop
             for (auto U : addr_cast->users()) {
@@ -266,8 +335,11 @@ bool lower_constant_expr(llvm::Module *M) {
                 Users.push_back(InstUser);
               }
             }
-            for (auto &User : Users)
+            for (auto &User : Users) {
+              auto ReplInst = addr_cast->getAsInstruction();
+              ReplInst->insertBefore(User);
               User->replaceUsesOfWith(addr_cast, ReplInst);
+            }
           }
         }
       }
@@ -276,11 +348,24 @@ bool lower_constant_expr(llvm::Module *M) {
   return modified;
 }
 
-void init_block(llvm::Module *M) {
+void replace_cuda_math_built_in(llvm::Module *M) {
+  // replace _ZL3expd, just delete its body
+  for (Module::iterator i = M->begin(), e = M->end(); i != e; ++i) {
+    Function *F = &(*i);
+    auto func_name = F->getName().str();
+    if (func_name.find("_ZL3expd") != std::string::npos) {
+      F->deleteBody();
+    }
+  }
+}
+
+void init_block(llvm::Module *M, std::ofstream &fout) {
   // using official llvm preprocess
   llvm_preprocess(M);
   // remove useles Cuda function
   remove_cuda_built_in(M);
+  // replace CUDA math function, like expf
+  replace_cuda_math_built_in(M);
 
   // lower ConstantExpression
   bool modified;
@@ -289,14 +374,26 @@ void init_block(llvm::Module *M) {
   } while (modified);
   // remove useless metadata
   remove_metadata(M);
-  // inline vote function
-  inline_func_vote(M);
+  // inline warp-level function
+  while (1) {
+    if (!inline_warp_level_func(M))
+      break;
+  }
+  // TODO: remove the hardcode
+  while (1) {
+    if (!inline_func_with_tid(M))
+      break;
+  }
   // create global variable for warp and vote
   create_global_variable(M);
   // replace phi with data load
   phi2alloc(M);
   // replace share memory
   mem_share2global(M);
+  // replace share memory
+  mem_constant2global(M, fout);
   // replace asm Inline
   replace_asm_call(M);
+  // replace dynamic shared memory
+  replace_dynamic_shared_memory(M);
 }

@@ -44,6 +44,8 @@ void handle_warp_vote(llvm::Module *M) {
     for (Function::iterator E = F->end(); I != E; ++I) {
       for (BasicBlock::iterator BI = I->begin(); BI != I->end(); BI++) {
         if (CallInst *vote_any_sync = dyn_cast<CallInst>(BI)) {
+          if (vote_any_sync->isInlineAsm())
+            continue;
           auto func_name = vote_any_sync->getCalledFunction()->getName();
           if (func_name == "llvm.nvvm.vote.any.sync" ||
               func_name == "llvm.nvvm.vote.all.sync") {

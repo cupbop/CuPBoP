@@ -18,6 +18,7 @@
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
+#include <iostream>
 
 using namespace llvm;
 
@@ -39,6 +40,10 @@ void decode_input(llvm::Module *M) {
 
   llvm::FunctionType *LauncherFuncT = FunctionType::get(
       Type::getVoidTy(*C), {PointerType::get(Int8T, 0)}, false);
+
+  std::set<GlobalVariable *> dynmaic_memory;
+
+  std::map<GlobalVariable *, Value *> corres_dynamic_memory_load_address;
 
   // generate Wrapper Function type
   // now we only support a single int32*
@@ -64,6 +69,51 @@ void decode_input(llvm::Module *M) {
     // convert to int**
     input_arg = Builder.CreateBitOrPointerCast(
         input_arg, PointerType::get(PointerType::get(Int32T, 0), 0));
+
+    // dynamic memory load in the wrapper function
+    GlobalVariable *share_memory = M->getGlobalVariable("wrapper_global_data");
+    if (share_memory != NULL) {
+      dynmaic_memory.insert(share_memory);
+      llvm::GlobalVariable *global_mem = new llvm::GlobalVariable(
+          *M, Int32T, false, llvm::GlobalValue::ExternalLinkage, NULL,
+          "thread_memory_size", NULL, llvm::GlobalValue::GeneralDynamicTLSModel,
+          0, false);
+      Value *loadedValue = Builder.CreateLoad(global_mem);
+
+      llvm::FunctionType *LaunchFun2 = FunctionType::get(
+          PointerType::get(PointerType::get(Int32T, 0), 0), NULL);
+
+      FunctionCallee fc2 =
+          M->getOrInsertFunction("_wrapper_global_data", LaunchFun2);
+
+      Function *WorkGroup2 = dyn_cast<Function>(fc2.getCallee());
+
+      WorkGroup2->setLinkage(GlobalValue::WeakODRLinkage);
+      WorkGroup2->setVisibility(GlobalValue::HiddenVisibility);
+      Comdat *co = M->getOrInsertComdat("_wrapper_global_data");
+      co->setSelectionKind(Comdat::SelectionKind::Any);
+      WorkGroup2->setComdat(co);
+
+      BasicBlock *Block2 = BasicBlock::Create(M->getContext(), "", WorkGroup2);
+
+      llvm::IRBuilder<> Builder2(M->getContext());
+      Builder2.SetInsertPoint(Block2);
+      Builder2.CreateRet(share_memory);
+
+      auto PT = dyn_cast<PointerType>(share_memory->getType());
+      auto element_type = PT->getElementType();
+      // std::cout << element_type->getTypeID()  << " Got global memor $$$$$$"
+      // << share_memory->getName().str() << std::endl;
+
+      AllocaInst *new_arr = Builder.CreateAlloca(Int8T, loadedValue, "new_arr");
+      // new_arr->setAlignment(llvm::MaybeAlign(16));
+      Value *new_ar = new_arr;
+      Value *gptr = Builder.CreateBitOrPointerCast(
+          share_memory, PointerType::get(PointerType::get(Int8T, 0), 0));
+
+      Builder.CreateStore(new_ar, gptr);
+    }
+
     size_t idx = 0;
     for (Function::const_arg_iterator ii = F->arg_begin(), ee = F->arg_end();
          ii != ee; ++ii) {
@@ -95,6 +145,8 @@ void remove_barrier(llvm::Module *M) {
     for (auto BB = F->begin(); BB != F->end(); ++BB) {
       for (auto BI = BB->begin(); BI != BB->end(); BI++) {
         if (auto Call = dyn_cast<CallInst>(BI)) {
+          if (Call->isInlineAsm())
+            continue;
           auto func_name = Call->getCalledFunction()->getName().str();
           if (func_name == "llvm.nvvm.bar.warp.sync" ||
               func_name == "llvm.nvvm.barrier0" ||
@@ -109,6 +161,11 @@ void remove_barrier(llvm::Module *M) {
   }
 }
 
+void remove_useless_var(llvm::Module *M) {
+  M->getGlobalVariable("intra_warp_index")->eraseFromParent();
+  M->getGlobalVariable("inter_warp_index")->eraseFromParent();
+}
+
 void generate_x86_format(llvm::Module *M) {
   // change metadata
   set_meta_data(M);
@@ -116,4 +173,6 @@ void generate_x86_format(llvm::Module *M) {
   decode_input(M);
   // remove barrier
   remove_barrier(M);
+  // remove useless func/variable
+  remove_useless_var(M);
 }

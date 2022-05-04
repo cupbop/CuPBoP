@@ -212,11 +212,22 @@ public:
       changed = true;
 
       // we may create a new conditional barrier after insert
-      if (!PDT->getPostDomTree().dominates(pred, &F.getEntryBlock()))
-        conditionalBarriers.push_back(pred);
+      if (!PDT->getPostDomTree().dominates(pred, &F.getEntryBlock())) {
+        // if the block postdominates all its predecessor
+        // then it is not a conditional barriers
+        bool post_dominate_all = true;
+        for (auto I = pred_begin(pred); I != pred_end(pred); I++) {
+          if (!PDT->getPostDomTree().dominates(pred, *I)) {
+            post_dominate_all = false;
+            break;
+          }
+        }
+        if (!post_dominate_all)
+          conditionalBarriers.push_back(pred);
+      }
 
       // find any block which are not dominated by header
-      // but be posdiminated by merge point
+      // but be postdominated by merge point
       std::queue<llvm::BasicBlock *> if_body;
       std::set<llvm::BasicBlock *> visited_block;
       for (int i = 0; i < pred->getTerminator()->getNumSuccessors(); i++) {
@@ -234,19 +245,26 @@ public:
             PDT->getPostDomTree().dominates(merge_point, curr)) {
           // we should insert barrier at the beginning and
           // end of its predecessor
+          printf("insert [255]: %s\n", curr->getName().str().c_str());
           if (has_warp_barrier(b)) {
             CreateIntraWarpBarrier(&(*curr->begin()));
             for (BasicBlock *Pred : predecessors(curr)) {
+              printf("insert [262]: %s\n", Pred->getName().str().c_str());
               CreateIntraWarpBarrier(&(*Pred->getTerminator()));
             }
           } else {
             CreateInterWarpBarrier(&(*curr->begin()));
             for (BasicBlock *Pred : predecessors(curr)) {
+              printf("insert [268]: %s\n", Pred->getName().str().c_str());
               CreateInterWarpBarrier(&(*Pred->getTerminator()));
             }
           }
         }
         for (int i = 0; i < curr->getTerminator()->getNumSuccessors(); i++) {
+          // avoid backedge
+          if (DT->dominates(curr->getTerminator()->getSuccessor(i), pred)) {
+            continue;
+          }
           if_body.push(curr->getTerminator()->getSuccessor(i));
         }
       }
@@ -266,6 +284,32 @@ public:
     AU.addRequired<DominatorTreeWrapperPass>();
   }
 
+  BasicBlock *find_merge_point(BasicBlock *start, PostDominatorTree &PDT) {
+    assert(start->getTerminator()->getNumSuccessors() == 2);
+    std::set<llvm::BasicBlock *> visit;
+    std::queue<llvm::BasicBlock *> pending_blocks;
+    for (int i = 0; i < start->getTerminator()->getNumSuccessors(); i++) {
+      pending_blocks.push(start->getTerminator()->getSuccessor(i));
+    }
+    while (!pending_blocks.empty()) {
+      BasicBlock *current = pending_blocks.front();
+      pending_blocks.pop();
+
+      if (visit.find(current) != visit.end())
+        continue;
+
+      visit.insert(current);
+      if (PDT.dominates(current, start))
+        return current;
+      for (int i = 0; i < current->getTerminator()->getNumSuccessors(); i++) {
+        auto succ = current->getTerminator()->getSuccessor(i);
+        if (visit.find(succ) == visit.end())
+          pending_blocks.push(succ);
+      }
+    }
+    assert(0 && "Do not find merge point\n");
+    return NULL;
+  }
   virtual bool runOnFunction(Function &F) {
     if (!isKernelFunction(F.getParent(), &F))
       return 0;
@@ -280,18 +324,8 @@ public:
 
     for (Function::iterator i = F.begin(), e = F.end(); i != e; ++i) {
       BasicBlock *b = &*i;
-      BasicBlock *merge_point = NULL;
       if (b->getTerminator()->getNumSuccessors() == 2) {
-        auto b1 = b->getTerminator()->getSuccessor(0);
-        auto b2 = b->getTerminator()->getSuccessor(1);
-        if (PDT->getPostDomTree().dominates(b1, b2)) {
-          merge_point = b1;
-        } else if (PDT->getPostDomTree().dominates(b2, b2)) {
-          merge_point = b2;
-        } else {
-          assert(0 && "find complex if-else branch\n");
-        }
-        std::cout << std::flush;
+        auto merge_point = find_merge_point(b, PDT->getPostDomTree());
         for (BasicBlock *Pred : predecessors(merge_point)) {
           if (!DT->dominates(b, Pred)) {
             // we need to insert an extra block to be the merge point
@@ -305,14 +339,8 @@ public:
     auto M = F.getParent();
     for (auto head : if_head) {
       assert(head->getTerminator()->getNumSuccessors() == 2);
-      BasicBlock *merge_point = NULL;
-      auto s1 = head->getTerminator()->getSuccessor(0);
-      auto s2 = head->getTerminator()->getSuccessor(1);
-      if (PDT->getPostDomTree().dominates(s1, s2)) {
-        merge_point = s1;
-      } else {
-        merge_point = s2;
-      }
+      BasicBlock *merge_point = find_merge_point(head, PDT->getPostDomTree());
+      assert(PDT->getPostDomTree().dominates(merge_point, head));
       if (!find_barrier_in_region(head, merge_point)) {
         printf("do not need to handle tri-income if: %s\n",
                merge_point->getName().str().c_str());
@@ -368,6 +396,8 @@ public:
       for (BasicBlock::iterator j = (*i)->begin(), e = (*i)->end(); j != e;
            ++j) {
         if (auto Call = dyn_cast<CallInst>(j)) {
+          if (Call->isInlineAsm())
+            continue;
           auto func_name = Call->getCalledFunction()->getName().str();
           if (func_name == "llvm.nvvm.barrier0" ||
               func_name == "llvm.nvvm.bar.warp.sync" ||
@@ -383,7 +413,7 @@ public:
     }
     if (!is_conditional_loop)
       return 0;
-    // insert barrier at the beginning of header
+    // insert barrier at the beginning of header (for_cond)
     // and the end of pre header, so that we can get a
     // single block connected with latch
     if (!is_warp) {
@@ -399,17 +429,40 @@ public:
     }
 
     // as we assume all loops are rotated, we have to insert
-    // barrier before the condition jump of the loop exit
-
-    if (auto exit_block = L->getExitingBlock()) {
+    // barrier before the condition jump of the for_cond
+    if (auto for_cond = L->getExitingBlock()) {
+      assert(for_cond->getTerminator()->getNumSuccessors() == 2 &&
+             "has more than 2 successors of the for-cond\n");
       auto conditional_br =
-          dyn_cast<llvm::BranchInst>(exit_block->getTerminator());
+          dyn_cast<llvm::BranchInst>(for_cond->getTerminator());
       assert(conditional_br && conditional_br->isConditional());
-      // insert barrier at the beginning of successor of exit
+      // insert barrier before the condition jump of the loop cond
       if (!is_warp)
         CreateInterWarpBarrier(conditional_br);
       else
         CreateIntraWarpBarrier(conditional_br);
+      // insert barrier before the for_body
+      auto for_body = for_cond->getTerminator()->getSuccessor(0);
+      if (for_body == L->getExitBlock()) {
+        for_body = for_cond->getTerminator()->getSuccessor(1);
+      }
+      // insert at the beginning of for_body
+      if (!is_warp)
+        CreateInterWarpBarrier(&(*for_body->begin()));
+      else
+        CreateIntraWarpBarrier(&(*for_body->begin()));
+      // insert at the beginning and end in for_inc block
+      if (auto for_inc = L->getLoopLatch()) {
+        if (!is_warp) {
+          CreateInterWarpBarrier(&(*for_inc->begin()));
+          CreateInterWarpBarrier(for_inc->getTerminator());
+        } else {
+          CreateIntraWarpBarrier(&(*for_inc->begin()));
+          CreateIntraWarpBarrier(for_inc->getTerminator());
+        }
+      } else {
+        assert(0 && "has continue in a barrier loop\n");
+      }
     } else {
       // handle break in for-loop
       printf("loop has multiply exists\n");

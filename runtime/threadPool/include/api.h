@@ -3,7 +3,8 @@
 
 #include "structures.h"
 
-cu_kernel *create_kernel(void (*wrap)(cu_argument *));
+cu_kernel *create_kernel(const void *func, dim3 gridDim, dim3 blockDim,
+                         void **args, size_t sharedMem, cudaStream_t stream);
 int getWorkItem(struct kernel_queue **qu, cu_kernel *ker,
                 struct argument *kernel_arg, int **blockId);
 int create_KernelQueue(kernel_queue **q);
@@ -21,5 +22,8 @@ int set_kernel_arguments(cu_kernel **k, unsigned int arg_num, void **arg_value);
 
 int setKernelDimensions(cu_kernel *k, struct argument **arg,
                         void **totalBlockSize, void *blockId);
+
+int init_device();
+int cuLaunchKernel(cu_kernel **k);
 
 #endif

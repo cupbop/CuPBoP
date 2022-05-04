@@ -39,3 +39,4 @@ set(GCC_COVERAGE_LINK_FLAGS
     "-L${LLVM_LIB_PATH} ${LLVM_LINK_FLAG} -lz -lrt -ldl -ltinfo -lpthread -lm")
 
 add_subdirectory(compilation)
+add_subdirectory(runtime)
