@@ -1,62 +1,82 @@
-# COX: CUDA on X86
+# CuPBoP: Cuda for Parallelized and Broad-range Processors
 
 ## Introduction
 
-This project consists of two parts: a series of LLVM passes that
-achieve a SPMD NVVM IR as input, and output the corresponding
-MPMD+SIMD version of LLVM IR which can be execute on CPU devices.
+CuPBoP is a framework which support executing unmodified CUDA source code
+on non-NVIDIA devices.
+Currently, CuPBoP support serveral CPU backends, including x86, AArch64, and RISC-V.
 
 ## Install
 
 ### Prerequisites
 
-* Linux: Verified on Ubuntu 18.04
-* LLVM10.0
-* NVIDIA CUDA-toolkit
-* x86 CPU
-* pthread
-* GCC 7.5.0
+- Linux: Verified on Ubuntu 18.04
+- LLVM10.0
+- NVIDIA CUDA-toolkit
+- x86 CPU
+- pthread
+- GCC 7.5.0
 
 ### Installation
 
 1. Clone from github
 
-    ```bash
-    git clone https://github.com/drcut/open_source_template
-    cd open_source_template
-    ```
+   ```bash
+   git clone https://github.com/cupbop/CuPBoP
+   cd CuPBoP
+   export CuPBoP_PATH=`pwd`
+   export LD_LIBRARY_PATH=$CuPBoP_PATH/build/runtime:$CuPBoP_PATH/build/runtime/threadPool:$LD_LIBRARY_PATH
+   ```
 
-2. Build the transformer for NVVM IR to LLVM IR for X86
+2. As CuPBoP relies on CUDA structures, we need to download the CUDA header file
 
-    ```bash
-    mkdir build && cd build
-    cmake .. -DLLVM_CONFIG_PATH=`which llvm-config` # need path to llvm-config
-    make
-    ```
+   ```bash
+   wget https://www.dropbox.com/s/r18io0zu3idke5p/cuda-header.tar.gz?dl=1
+   tar -xzf 'cuda-header.tar.gz?dl=1'
+   cp -r include/* runtime/threadPool/include/
+   ```
 
-## Run Vecadd samples
+3. Other CUDA files are also required for compiling CUDA source code to LLVM IR
+
+   ```bash
+   wget https://www.dropbox.com/s/4pckqsjnl920gpn/cuda-10.1.tar.gz?dl=1
+   tar -xzf 'cuda-10.1.tar.gz?dl=1'
+   ```
+
+4. Build CuPBoP
+
+   ```bash
+   mkdir build && cd build
+   cmake .. -DLLVM_CONFIG_PATH=`which llvm-config` # need path to llvm-config
+   make
+   ```
+
+## Run HIST application in Hetero-mark benchmark
 
 ```bash
-# Generate bitcode from human-readable LLVM IR
-llvm-as ../compilation/examples/vecadd/kernel-cuda-nvptx64-nvidia-cuda-sm_61.ll
-# use LLVM passes to transform NVVM IR (SPMD) to LLVM IR (MPMD+SIMD).
-# NOTE: we hard-code the grid size (1, 1, 1)
-# and block size (1024, 1, 1) into the generated LLVM IR
-./compilation/nvvm2x86 \
-    ../compilation/examples/vecadd/kernel-cuda-nvptx64-nvidia-cuda-sm_61.bc \
-    kernel.bc 1 1 1 32 1 1
-# generate object file from LLVM IR
-llc --filetype=obj kernel.bc
-# link generated kernel function
-# with host function and generate excutable file
-g++ ../compilation/examples/vecadd/host.cpp \
-    kernel.o -lpthread -o vecadd_example
-# execute the executable file
-./vecadd_example
+# Clone Hetero-mark benchmark
+git clone https://github.com/drcut/SC_evaluate
+cd SC_evaluate/Hetero-cox/src/hist
+# Compile CUDA source code to LLVM IR
+# this may raise error due to absence of CUDA library, just ignore them
+clang++ -std=c++11 cuda/hist_cuda_benchmark.cu \\
+    -I../.. --cuda-path=$CuPBoP_PATH/cuda-10.1 \\
+    --cuda-gpu-arch=sm_50 -L$CuPBoP_PATH/cuda-10.1/lib64 \\
+    -lcudart_static -ldl -lrt -pthread -save-temps -v  || true
+# Translate host/kernel LLVM IR to formats that suitable for CPU
+$CuPBoP_PATH/build/compilation/kernelTranslator hist_cuda_benchmark-cuda-nvptx64-nvidia-cuda-sm_50.bc kernel.bc
+$CuPBoP_PATH/build/compilation/hostTranslator hist_cuda_benchmark-host-x86_64-unknown-linux-gnu.bc host.bc
+# generate object files
+llc --relocation-model=pic --filetype=obj  kernel.bc
+llc --relocation-model=pic --filetype=obj  host.bc
+# generate CPU executable file
+g++ -o hist -fPIC -no-pie \\
+-I$CuPBoP_PATH/runtime/threadPool/include \\
+-L$CuPBoP_PATH/build/runtime  \\
+-L$CuPBoP_PATH/build/runtime/threadPool \\
+cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc \\
+../common/command_line_option/*.cc  ../common/time_measurement/*.cc \\
+-I../.. -lpthread -lc -lx86Runtime -lthreadPool
+# execute and verify
+./hist -q -v
 ```
-
-## Author
-
-[Ruobing Han](https://drcut.github.io/) is a CS phd student in
-Georgia Institute Technology, under the supervision
-of Prof. [Hyesoon Kim](https://www.cc.gatech.edu/~hyesoon/).
