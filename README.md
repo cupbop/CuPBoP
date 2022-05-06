@@ -82,3 +82,7 @@ cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc \\
 # execute and verify
 ./hist -q -v
 ```
+
+## How to contribute?
+
+Any kinds of contributions are welcome. Please refer to [Contribution.md](./CONTRIBUTING.md) for more detail.
