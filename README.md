@@ -64,8 +64,10 @@ clang++ -std=c++11 cuda/hist_cuda_benchmark.cu \\
     --cuda-gpu-arch=sm_50 -L$CuPBoP_PATH/cuda-10.1/lib64 \\
     -lcudart_static -ldl -lrt -pthread -save-temps -v  || true
 # Translate host/kernel LLVM IR to formats that suitable for CPU
-$CuPBoP_PATH/build/compilation/kernelTranslator hist_cuda_benchmark-cuda-nvptx64-nvidia-cuda-sm_50.bc kernel.bc
-$CuPBoP_PATH/build/compilation/hostTranslator hist_cuda_benchmark-host-x86_64-unknown-linux-gnu.bc host.bc
+$CuPBoP_PATH/build/compilation/kernelTranslator \\
+   hist_cuda_benchmark-cuda-nvptx64-nvidia-cuda-sm_50.bc kernel.bc
+$CuPBoP_PATH/build/compilation/hostTranslator \\
+   hist_cuda_benchmark-host-x86_64-unknown-linux-gnu.bc host.bc
 # generate object files
 llc --relocation-model=pic --filetype=obj  kernel.bc
 llc --relocation-model=pic --filetype=obj  host.bc
