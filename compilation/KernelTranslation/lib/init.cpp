@@ -395,5 +395,9 @@ void init_block(llvm::Module *M, std::ofstream &fout) {
   // replace asm Inline
   replace_asm_call(M);
   // replace dynamic shared memory
-  replace_dynamic_shared_memory(M);
+  auto dynamic_shared_memory_addr =
+        M->getGlobalVariable("dynamic_shared_memory");
+  if (dynamic_shared_memory_addr) {
+    replace_dynamic_shared_memory(M);
+  }
 }

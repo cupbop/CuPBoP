@@ -270,11 +270,17 @@ void AddContextSaveRestore(llvm::Instruction *instruction,
       AddContextSave(instruction, alloca, intra_warp_loop);
 
   std::vector<Instruction *> uses;
+  Function *f2 = instruction->getParent()->getParent();
+
 
   for (Instruction::use_iterator ui = instruction->use_begin(),
                                  ue = instruction->use_end();
        ui != ue; ++ui) {
     llvm::Instruction *user = cast<Instruction>(ui->getUser());
+    Function *f1 = user->getParent()->getParent();
+    if(f2->getName() != f1->getName()) {
+      continue;
+    }
     if (user == NULL)
       continue;
     if (user == theStore)
