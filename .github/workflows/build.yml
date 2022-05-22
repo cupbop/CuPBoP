@@ -192,4 +192,4 @@ jobs:
           llc --relocation-model=pic --filetype=obj  rdwt97.bc
           llc --relocation-model=pic --filetype=obj  rdwt53.bc
           g++ -o dwt2d -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool common.o components.o dwt.o fdwt53.o fdwt97.o rdwt97.o rdwt53.o host.o common_host.o components_host.o dwt_host.o fdwt53_host.o fdwt97_host.o rdwt97_host.o rdwt53_host.o -lpthread -lc -lx86Runtime -lthreadPool -pthread
-          ./dwt2d 4.bmp -d 4x4 -f -5 -l 3
+          ./dwt2d 192.bmp -d 192x192 -f -5 -l 3
