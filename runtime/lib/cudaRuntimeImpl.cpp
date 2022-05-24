@@ -39,6 +39,12 @@ cudaError_t cudaMalloc(void **devPtr, size_t size) {
     return cudaErrorMemoryAllocation;
   return cudaSuccess;
 }
+cudaError_t cudaMallocHost(void **devPtr, size_t size) {
+  *devPtr = malloc(size);
+  if (devPtr == NULL)
+    return cudaErrorMemoryAllocation;
+ return cudaSuccess;
+}
 cudaError_t cudaMemset(void *devPtr, int value, size_t count) {
   memset(devPtr, value, count);
   return cudaSuccess;
@@ -58,7 +64,7 @@ cudaError_t cudaMemcpy(void *dst, const void *src, size_t count,
     memcpy(dst, src, count);
   } else if (kind == cudaMemcpyDeviceToDevice) {
 
-    memcpy(dst, dst, count);
+    memcpy(dst, src, count);
   } else if (kind == cudaMemcpyDefault) {
     memcpy(dst, src, count);
   }
