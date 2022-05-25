@@ -1,4 +1,4 @@
-/// 
+///
 /// @file    fdwt97.cu
 /// @brief   CUDA implementation of forward 9/7 2D DWT.
 /// @author  Martin Jirman (207962@mail.muni.cz)
@@ -7,16 +7,16 @@
 ///
 /// Copyright (c) 2011 Martin Jirman
 /// All rights reserved.
-/// 
+///
 /// Redistribution and use in source and binary forms, with or without
 /// modification, are permitted provided that the following conditions are met:
-/// 
+///
 ///     * Redistributions of source code must retain the above copyright
 ///       notice, this list of conditions and the following disclaimer.
 ///     * Redistributions in binary form must reproduce the above copyright
 ///       notice, this list of conditions and the following disclaimer in the
 ///       documentation and/or other materials provided with the distribution.
-/// 
+///
 /// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 /// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 /// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -38,8 +38,8 @@
 
 namespace dwt_cuda {
 
- 
-  
+
+
   /// Wraps a buffer and methods for computing 9/7 FDWT with sliding window
   /// of specified size. Template arguments specify this size.
   /// @tparam WIN_SIZE_X  width of sliding window
@@ -62,8 +62,8 @@ namespace dwt_cuda {
     template <bool CHECKED>
     struct FDWT97ColumnLoadingInfo {
       /// Loader of pixels from some input image.
-      VerticalDWTPixelLoader<float, CHECKED> loader;  
-      
+      VerticalDWTPixelLoader<float, CHECKED> loader;
+
       /// Offset of column loaded by loader. (Offset in shared buffer.)
       int offset;
     };
@@ -103,7 +103,7 @@ namespace dwt_cuda {
     /// @param firstY       index of first row to be loaded from image
     template <bool CHECKED>
     __device__ void initColumn(FDWT97ColumnLoadingInfo<CHECKED> & column,
-                              const int columnIndex, const float * const input, 
+                              const int columnIndex, const float * const input,
                               const int sizeX, const int sizeY,
                               const int firstY) {
       // get offset of the column with index 'columnIndex'
@@ -113,7 +113,7 @@ namespace dwt_cuda {
 
       // x-coordinate of the first pixel to be loaded by given loader
       const int firstX = blockIdx.x * WIN_SIZE_X + columnIndex;
-      
+
       if(blockIdx.y == 0) {
         // topmost block - apply mirroring rules when loading first 7 rows
         column.loader.init(sizeX, sizeY, firstX, firstY);
@@ -162,7 +162,7 @@ namespace dwt_cuda {
     /// @tparam CHECK_WRITES  true if boundaries should be checked when writing
     /// @param in        input image
     /// @param out       output buffer
-    /// @param sizeX     width of the input image 
+    /// @param sizeX     width of the input image
     /// @param sizeY     height of the input image
     /// @param winSteps  number of steps of sliding window
     template <bool CHECK_LOADS, bool CHECK_WRITES>
@@ -205,7 +205,7 @@ namespace dwt_cuda {
       // transform buffer offset of column transformed and saved by this thread
       const int outColumnOffset = buffer.getColumnOffset(outColumnIndex);
 
-      // (Each iteration of this loop assumes that first 7 rows of transform 
+      // (Each iteration of this loop assumes that first 7 rows of transform
       // buffer are already loaded with horizontally transformed coefficients.)
       for(int w = 0; w < winSteps; w++) {
         // Load another WIN_SIZE_Y lines of thread's column into the buffer.
@@ -220,7 +220,7 @@ namespace dwt_cuda {
         horizontalFDWT97(WIN_SIZE_Y, 7);
 
         // Using 7 registers, remember current values of last 7 rows of
-        // transform buffer. These rows are transformed horizontally only 
+        // transform buffer. These rows are transformed horizontally only
         // and will be used in next iteration.
         float last7Lines[7];
         for(int i = 0; i < 7; i++) {
@@ -249,7 +249,7 @@ namespace dwt_cuda {
         // As expected, these lines are already horizontally transformed.
         for(int i = 0; i < 7; i++) {
           buffer[outColumnOffset + i * STRIDE] = last7Lines[i];
-      
+
         }
 
         // Wait for all writing threads before proceeding to loading new
@@ -259,15 +259,15 @@ namespace dwt_cuda {
       }
 
     }
-    
-    
+
+
   public:
     /// Runs one of specialized variants of 9/7 FDWT according to distance of
-    /// processed pixels to image boudnary. Some variants do not check for 
+    /// processed pixels to image boudnary. Some variants do not check for
     /// boudnary and thus are slightly faster.
     /// @param in     input image
     /// @param out    output buffer
-    /// @param sx     width of the input image 
+    /// @param sx     width of the input image
     /// @param sy     height of the input image
     /// @param steps  number of steps of sliding window
     __device__ static void run(const float * const input, float * const output,
@@ -299,15 +299,15 @@ namespace dwt_cuda {
         fdwt97.transform<false, false>(input, output, sx, sy, steps);
       }
     }
-    
+
   }; // end of class FDWT97
-  
-  
-    
+
+
+
   /// Main GPU 9/7 FDWT entry point.
   /// @param input   input image
   /// @parma output  output buffer
-  /// @param sx      width of the input image 
+  /// @param sx      width of the input image
   /// @param sy      height of the input image
   /// @param steps   number of steps of sliding window
   template <int WIN_SX, int WIN_SY>
@@ -321,21 +321,21 @@ namespace dwt_cuda {
     FDWT97<WIN_SX, WIN_SY>::run(input, output, sx, sy, steps);
   }
 
-  
-  
-  /// Only computes optimal number of sliding window steps, 
+
+
+  /// Only computes optimal number of sliding window steps,
   /// number of threadblocks and then lanches the 9/7 FDWT kernel.
   /// @tparam WIN_SX  width of sliding window
   /// @tparam WIN_SY  height of sliding window
   /// @param in       input image
   /// @param out      output buffer
-  /// @param sx       width of the input image 
+  /// @param sx       width of the input image
   /// @param sy       height of the input image
   template <int WIN_SX, int WIN_SY>
   void launchFDWT97Kernel (float * in, float * out, int sx, int sy) {
     // compute optimal number of steps of each sliding window
     const int steps = divRndUp(sy, 15 * WIN_SY);
-    
+
     // prepare grid size
     dim3 gSize(divRndUp(sx, WIN_SX), divRndUp(sy, WIN_SY * steps));
     printf("\n globalx=%d, globaly=%d, blocksize=%d\n", gSize.x, gSize.y, WIN_SX);
@@ -346,11 +346,11 @@ namespace dwt_cuda {
     PERF_END("        FDWT97", sx, sy)
     CudaDWTTester::checkLastKernelCall("FDWT 9/7 kernel");
   }
-  
-  
-  
+
+
+
   /// Forward 9/7 2D DWT. See common rules (dwt.h) for more details.
-  /// @param in      Input DWT coefficients. Should be normalized (in range 
+  /// @param in      Input DWT coefficients. Should be normalized (in range
   ///                [-0.5, 0.5]). Will not be preserved (will be overwritten).
   /// @param out     output buffer on GPU - format specified in common rules
   /// @param sizeX   width of input image (in pixels)
@@ -365,19 +365,19 @@ namespace dwt_cuda {
     } else {
       launchFDWT97Kernel<64, 6>(in, out, sizeX, sizeY);
     }
-    
+
     // if this was not the last level, continue recursively with other levels
     if(levels > 1) {
       // copy output's LL band back into input buffer
       const int llSizeX = divRndUp(sizeX, 2);
       const int llSizeY = divRndUp(sizeY, 2);
       memCopy(in, out, llSizeX, llSizeY);
-      
+
       // run remaining levels of FDWT
       fdwt97(in, out, llSizeX, llSizeY, levels - 1);
     }
   }
-  
-  
+
+
 
 } // end of namespace dwt_cuda

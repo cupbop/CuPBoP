@@ -5,4 +5,3 @@
 ./dwt2d 4.bmp  -d 4x4 -r -5 -l 3
 # ./dwt2d 4.bmp  -d 4x4 -r -9 -l 3
 # ./dwt2d 8.bmp  -d 8x8 -f -9 -l 3
-

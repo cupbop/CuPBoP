@@ -1,4 +1,4 @@
-/// 
+///
 /// @file    rdwt53.cu
 /// @brief   CUDA implementation of reverse 5/3 2D DWT.
 /// @author  Martin Jirman (207962@mail.muni.cz)
@@ -7,16 +7,16 @@
 ///
 /// Copyright (c) 2011 Martin Jirman
 /// All rights reserved.
-/// 
+///
 /// Redistribution and use in source and binary forms, with or without
 /// modification, are permitted provided that the following conditions are met:
-/// 
+///
 ///     * Redistributions of source code must retain the above copyright
 ///       notice, this list of conditions and the following disclaimer.
 ///     * Redistributions in binary form must reproduce the above copyright
 ///       notice, this list of conditions and the following disclaimer in the
 ///       documentation and/or other materials provided with the distribution.
-/// 
+///
 /// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 /// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 /// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -38,7 +38,7 @@
 
 namespace dwt_cuda {
 
-  
+
 
   /// Wraps shared momory buffer and algorithms needed for computing 5/3 RDWT
   /// using sliding window and lifting schema.
@@ -46,8 +46,8 @@ namespace dwt_cuda {
   /// @tparam WIN_SIZE_Y  height of sliding window
   template <int WIN_SIZE_X, int WIN_SIZE_Y>
   class RDWT53 {
-  private: 
-    
+  private:
+
     /// Shared memory buffer used for 5/3 DWT transforms.
     typedef TransformBuffer<int, WIN_SIZE_X, WIN_SIZE_Y + 3, 2> RDWT53Buffer;
 
@@ -64,10 +64,10 @@ namespace dwt_cuda {
     struct RDWT53Column {
       /// loader of pixels from column in input image
       VerticalDWTBandLoader<int, CHECKED> loader;
-      
+
       /// Offset of corresponding column in shared buffer.
       int offset;
-      
+
       /// Sets all fields to some values to avoid 'uninitialized' warnings.
       __device__ void clear() {
         offset = 0;
@@ -128,7 +128,7 @@ namespace dwt_cuda {
     /// @param sizeY     height of the input image
     /// @param loader    (uninitialized) info about loaded column
     template <bool CHECKED>
-    __device__ void initColumn(const int columnX, const int * const input, 
+    __device__ void initColumn(const int columnX, const int * const input,
                                const int sizeX, const int sizeY,
                                RDWT53Column<CHECKED> & column,
                                const int firstY) {
@@ -162,7 +162,7 @@ namespace dwt_cuda {
     /// @tparam CHECKED_WRITES  true if boundaries must be checked when writing
     /// @param in        input image (5/3 transformed coefficients)
     /// @param out       output buffer (for reverse transformed image)
-    /// @param sizeX     width of the output image 
+    /// @param sizeX     width of the output image
     /// @param sizeY     height of the output image
     /// @param winSteps  number of sliding window steps
     template<bool CHECKED_LOADS, bool CHECKED_WRITES>
@@ -182,7 +182,7 @@ namespace dwt_cuda {
         // column #0, thread #1 get right column #1 and thread #2 left column.
         const int colId = threadIdx.x + ((threadIdx.x != 2) ? WIN_SIZE_X : -3);
 
-        // Thread initializes offset of the boundary column (in shared 
+        // Thread initializes offset of the boundary column (in shared
         // buffer), first 3 pixels of the column and a loader for this column.
         initColumn(colId, in, sizeX, sizeY, boundaryColumn, firstY);
       }
@@ -216,8 +216,8 @@ namespace dwt_cuda {
         // horizontally transform all newly loaded lines
         horizontalTransform(WIN_SIZE_Y, 3);
 
-        // Using 3 registers, remember current values of last 3 rows 
-        // of transform buffer. These rows are transformed horizontally 
+        // Using 3 registers, remember current values of last 3 rows
+        // of transform buffer. These rows are transformed horizontally
         // only and will be used in next iteration.
         int last3Lines[3];
         last3Lines[0] = buffer[outputColumnOffset + (WIN_SIZE_Y + 0) * STRIDE];
@@ -253,7 +253,7 @@ namespace dwt_cuda {
     /// Main GPU 5/3 RDWT entry point.
     /// @param in     input image (5/3 transformed coefficients)
     /// @param out    output buffer (for reverse transformed image)
-    /// @param sizeX  width of the output image 
+    /// @param sizeX  width of the output image
     /// @param sizeY  height of the output image
     /// @param winSteps  number of sliding window steps
     __device__ static void run(const int * const input, int * const output,
@@ -284,13 +284,13 @@ namespace dwt_cuda {
     }
 
   }; // end of class RDWT53
-  
-  
-  
+
+
+
   /// Main GPU 5/3 RDWT entry point.
   /// @param in     input image (5/3 transformed coefficients)
   /// @param out    output buffer (for reverse transformed image)
-  /// @param sizeX  width of the output image 
+  /// @param sizeX  width of the output image
   /// @param sizeY  height of the output image
   /// @param winSteps  number of sliding window steps
   template <int WIN_SX, int WIN_SY>
@@ -299,34 +299,34 @@ namespace dwt_cuda {
                                const int sx, const int sy, const int steps) {
     RDWT53<WIN_SX, WIN_SY>::run(in, out, sx, sy, steps);
   }
-  
-  
-  
-  /// Only computes optimal number of sliding window steps, 
+
+
+
+  /// Only computes optimal number of sliding window steps,
   /// number of threadblocks and then lanches the 5/3 RDWT kernel.
   /// @tparam WIN_SX  width of sliding window
   /// @tparam WIN_SY  height of sliding window
   /// @param in       input image
   /// @param out      output buffer
-  /// @param sx       width of the input image 
+  /// @param sx       width of the input image
   /// @param sy       height of the input image
   template <int WIN_SX, int WIN_SY>
   void launchRDWT53Kernel (int * in, int * out, const int sx, const int sy) {
     // compute optimal number of steps of each sliding window
     const int steps = divRndUp(sy, 15 * WIN_SY);
-    
+
     // prepare grid size
     dim3 gSize(divRndUp(sx, WIN_SX), divRndUp(sy, WIN_SY * steps));
-    
+
     // finally transform this level
     PERF_BEGIN
     rdwt53Kernel<WIN_SX, WIN_SY><<<gSize, WIN_SX>>>(in, out, sx, sy, steps);
     PERF_END("        RDWT53", sx, sy)
     CudaDWTTester::checkLastKernelCall("RDWT 5/3 kernel");
   }
-    
-  
-  
+
+
+
   /// Reverse 5/3 2D DWT. See common rules (above) for more details.
   /// @param in      Input DWT coefficients. Format described in common rules.
   ///                Will not be preserved (will be overwritten).
@@ -341,11 +341,11 @@ namespace dwt_cuda {
       const int llSizeX = divRndUp(sizeX, 2);
       const int llSizeY = divRndUp(sizeY, 2);
       rdwt53(in, out, llSizeX, llSizeY, levels - 1);
-      
+
       // copy reverse transformed LL band from output back into the input
       memCopy(in, out, llSizeX, llSizeY);
     }
-    
+
     // select right width of kernel for the size of the image
     if(sizeX >= 960) {
       launchRDWT53Kernel<192, 8>(in, out, sizeX, sizeY);
@@ -355,6 +355,6 @@ namespace dwt_cuda {
       launchRDWT53Kernel<64, 8>(in, out, sizeX, sizeY);
     }
   }
-  
+
 
 } // end of namespace dwt_cuda
