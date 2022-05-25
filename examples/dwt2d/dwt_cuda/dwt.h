@@ -1,4 +1,4 @@
-/// 
+///
 /// @file    dwt.h
 /// @author  Martin Jirman (207962@mail.muni.cz)
 /// @brief   Entry points for CUDA implementaion of 9/7 and 5/3 DWT.
@@ -8,16 +8,16 @@
 ///
 /// Copyright (c) 2011 Martin Jirman
 /// All rights reserved.
-/// 
+///
 /// Redistribution and use in source and binary forms, with or without
 /// modification, are permitted provided that the following conditions are met:
-/// 
+///
 ///     * Redistributions of source code must retain the above copyright
 ///       notice, this list of conditions and the following disclaimer.
 ///     * Redistributions in binary form must reproduce the above copyright
 ///       notice, this list of conditions and the following disclaimer in the
 ///       documentation and/or other materials provided with the distribution.
-/// 
+///
 /// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 /// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 /// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -56,57 +56,48 @@
 ///
 
 #ifndef DWT_CUDA_H
-#define	DWT_CUDA_H
-
+#define DWT_CUDA_H
 
 namespace dwt_cuda {
-  
-  
-  /// Forward 5/3 2D DWT. See common rules (above) for more details.
-  /// @param in      Expected to be normalized into range [-128, 127].
-  ///                Will not be preserved (will be overwritten).
-  /// @param out     output buffer on GPU
-  /// @param sizeX   width of input image (in pixels)
-  /// @param sizeY   height of input image (in pixels)
-  /// @param levels  number of recursive DWT levels
-  void fdwt53(int * in, int * out, int sizeX, int sizeY, int levels);
-  
-  
-  /// Reverse 5/3 2D DWT. See common rules (above) for more details.
-  /// @param in      Input DWT coefficients. Format described in common rules.
-  ///                Will not be preserved (will be overwritten).
-  /// @param out     output buffer on GPU - will contain original image
-  ///                in normalized range [-128, 127].
-  /// @param sizeX   width of input image (in pixels)
-  /// @param sizeY   height of input image (in pixels)
-  /// @param levels  number of recursive DWT levels
-  void rdwt53(int * in, int * out, int sizeX, int sizeY, int levels);
-  
-  
-  /// Forward 9/7 2D DWT. See common rules (above) for more details.
-  /// @param in      Input DWT coefficients. Should be normalized (in range 
-  ///                [-0.5, 0.5]). Will not be preserved (will be overwritten).
-  /// @param out     output buffer on GPU - format specified in common rules
-  /// @param sizeX   width of input image (in pixels)
-  /// @param sizeY   height of input image (in pixels)
-  /// @param levels  number of recursive DWT levels
-  void fdwt97(float * in, float * out, int sizeX, int sizeY, int levels);
-  
-  
-  /// Reverse 9/7 2D DWT. See common rules (above) for more details.
-  /// @param in      Input DWT coefficients. Format described in common rules.
-  ///                Will not be preserved (will be overwritten).
-  /// @param out     output buffer on GPU - will contain original image
-  ///                in normalized range [-0.5, 0.5].
-  /// @param sizeX   width of input image (in pixels)
-  /// @param sizeY   height of input image (in pixels)
-  /// @param levels  number of recursive DWT levels
-  void rdwt97(float * in, float * out, int sizeX, int sizeY, int levels);
-  
-  
+
+/// Forward 5/3 2D DWT. See common rules (above) for more details.
+/// @param in      Expected to be normalized into range [-128, 127].
+///                Will not be preserved (will be overwritten).
+/// @param out     output buffer on GPU
+/// @param sizeX   width of input image (in pixels)
+/// @param sizeY   height of input image (in pixels)
+/// @param levels  number of recursive DWT levels
+void fdwt53(int *in, int *out, int sizeX, int sizeY, int levels);
+
+/// Reverse 5/3 2D DWT. See common rules (above) for more details.
+/// @param in      Input DWT coefficients. Format described in common rules.
+///                Will not be preserved (will be overwritten).
+/// @param out     output buffer on GPU - will contain original image
+///                in normalized range [-128, 127].
+/// @param sizeX   width of input image (in pixels)
+/// @param sizeY   height of input image (in pixels)
+/// @param levels  number of recursive DWT levels
+void rdwt53(int *in, int *out, int sizeX, int sizeY, int levels);
+
+/// Forward 9/7 2D DWT. See common rules (above) for more details.
+/// @param in      Input DWT coefficients. Should be normalized (in range
+///                [-0.5, 0.5]). Will not be preserved (will be overwritten).
+/// @param out     output buffer on GPU - format specified in common rules
+/// @param sizeX   width of input image (in pixels)
+/// @param sizeY   height of input image (in pixels)
+/// @param levels  number of recursive DWT levels
+void fdwt97(float *in, float *out, int sizeX, int sizeY, int levels);
+
+/// Reverse 9/7 2D DWT. See common rules (above) for more details.
+/// @param in      Input DWT coefficients. Format described in common rules.
+///                Will not be preserved (will be overwritten).
+/// @param out     output buffer on GPU - will contain original image
+///                in normalized range [-0.5, 0.5].
+/// @param sizeX   width of input image (in pixels)
+/// @param sizeY   height of input image (in pixels)
+/// @param levels  number of recursive DWT levels
+void rdwt97(float *in, float *out, int sizeX, int sizeY, int levels);
+
 } // namespace dwt_cuda
 
-
-
-#endif	// DWT_CUDA_H
-
+#endif // DWT_CUDA_H

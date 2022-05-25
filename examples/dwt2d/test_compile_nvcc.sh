@@ -7,12 +7,3 @@
 /usr/local/cuda/bin/nvcc -arch sm_50 -I. -I/include  -O2  --compiler-options -fno-strict-aliasing -c dwt_cuda/rdwt97.cu -o dwt_cuda/rdwt97.cu.o
 /usr/local/cuda/bin/nvcc -arch sm_50 -I. -I/include  -O2  --compiler-options -fno-strict-aliasing -c dwt_cuda/rdwt53.cu -o dwt_cuda/rdwt53.cu.o
 g++ -fPIC -o nvcc_dwt2d main.cu.o dwt.cu.o components.cu.o dwt_cuda/fdwt53.cu.o dwt_cuda/fdwt97.cu.o dwt_cuda/common.cu.o dwt_cuda/rdwt97.cu.o dwt_cuda/rdwt53.cu.o -L/usr/local/cuda/lib64 -lcudart
-
-
-
-
-
-
-
-
-

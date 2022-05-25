@@ -89,20 +89,20 @@ void mem_share2global(llvm::Module *M) {
           } else if (element_type->isStructTy()) {
             auto undef = llvm::UndefValue::get(element_type);
             llvm::GlobalVariable *global_memory = new llvm::GlobalVariable(
-                *M, element_type, false, llvm::GlobalValue::ExternalLinkage, undef,
-                new_name, NULL, llvm::GlobalValue::GeneralDynamicTLSModel, 0,
-                false);
+                *M, element_type, false, llvm::GlobalValue::ExternalLinkage,
+                undef, new_name, NULL,
+                llvm::GlobalValue::GeneralDynamicTLSModel, 0, false);
             global_memory->setDSOLocal(true);
-            Comdat * comdat = M->getOrInsertComdat(StringRef(share_memory->getName()));
+            Comdat *comdat =
+                M->getOrInsertComdat(StringRef(share_memory->getName()));
             comdat->setSelectionKind(Comdat::SelectionKind::Any);
             global_memory->setComdat(comdat);
             global_memory->setLinkage(llvm::GlobalValue::LinkOnceODRLinkage);
             global_memory->setInitializer(undef);
             global_memory->setAlignment(share_memory->getAlignment());
             corresponding_global_memory.insert(
-                std::pair<GlobalVariable *, GlobalVariable *>(share_memory, 
-                global_memory));
-
+                std::pair<GlobalVariable *, GlobalVariable *>(share_memory,
+                                                              global_memory));
 
           } else {
             assert(0 && "The required Share Memory Type is not supported\n");

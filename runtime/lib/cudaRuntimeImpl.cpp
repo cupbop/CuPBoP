@@ -43,7 +43,7 @@ cudaError_t cudaMallocHost(void **devPtr, size_t size) {
   *devPtr = malloc(size);
   if (devPtr == NULL)
     return cudaErrorMemoryAllocation;
- return cudaSuccess;
+  return cudaSuccess;
 }
 cudaError_t cudaMemset(void *devPtr, int value, size_t count) {
   memset(devPtr, value, count);
