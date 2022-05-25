@@ -158,7 +158,6 @@ jobs:
       - name: Execute the dwt2d example
         run: |
           cd ${{ github.workspace }}/SC_evaluate/rodinia-cox/dwt2d
-          ls ../../data/dwt2d
           clang++ -I. -I/include -fno-strict-aliasing dwt_cuda/fdwt53.cu dwt_cuda/fdwt97.cu  dwt_cuda/common.cu  dwt_cuda/rdwt97.cu  dwt_cuda/rdwt53.cu components.cu dwt.cu main.cu -c --cuda-path=${{ github.workspace }}/cuda-10.1  --cuda-gpu-arch=sm_61 -L${{ github.workspace }}/cuda-10.1/lib64 -lcudart_static -ldl -lrt -pthread -save-temps -v  || true
           export LD_LIBRARY_PATH=${{ github.workspace }}/build/runtime:${{ github.workspace }}/build/runtime/threadPool:$LD_LIBRARY_PATH
           export PATH=${{ github.workspace }}/build/compilation:$PATH
