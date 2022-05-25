@@ -6,16 +6,16 @@
 ///
 /// Copyright (c) 2011 Martin Jirman
 /// All rights reserved.
-/// 
+///
 /// Redistribution and use in source and binary forms, with or without
 /// modification, are permitted provided that the following conditions are met:
-/// 
+///
 ///     * Redistributions of source code must retain the above copyright
 ///       notice, this list of conditions and the following disclaimer.
 ///     * Redistributions in binary form must reproduce the above copyright
 ///       notice, this list of conditions and the following disclaimer in the
 ///       documentation and/or other materials provided with the distribution.
-/// 
+///
 /// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 /// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 /// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -44,7 +44,7 @@ namespace dwt_cuda {
   template <int WIN_SIZE_X, int WIN_SIZE_Y>
   class FDWT53 {
   private:
-    
+
     /// Info needed for processing of one input column.
     /// @tparam CHECKED_LOADER  true if column's loader should check boundaries
     ///                         false if there are no near boudnaries to check
@@ -52,13 +52,13 @@ namespace dwt_cuda {
     struct FDWT53Column {
       /// loader for the column
       VerticalDWTPixelLoader<int, CHECKED_LOADER> loader;
-      
+
       /// offset of the column in shared buffer
-      int offset;                   
-      
+      int offset;
+
       // backup of first 3 loaded pixels (not transformed)
       int pixel0, pixel1, pixel2;
-      
+
       /// Sets all fields to anything to prevent 'uninitialized' warnings.
       __device__ void clear() {
         offset = pixel0 = pixel1 = pixel2 = 0;
@@ -104,7 +104,7 @@ namespace dwt_cuda {
     /// @param colIndex  x-axis coordinate of the column (relative to the left
     ///                  side of this threadblock's block of input pixels)
     /// @param firstY    y-axis coordinate of first image row to be transformed
-	
+
 	template <bool CHECKED>
     __device__ void initColumn(FDWT53Column<CHECKED> & column,
                                const int * const input,
@@ -137,7 +137,7 @@ namespace dwt_cuda {
         column.pixel2 = column.loader.loadFrom(input);
         // Now, the next pixel, which will be loaded by loader, is pixel #1.
       }
-		
+
 	}
 
 
@@ -153,14 +153,14 @@ namespace dwt_cuda {
       buffer[column.offset + 0 * STRIDE] = column.pixel0;
       buffer[column.offset + 1 * STRIDE] = column.pixel1;
       buffer[column.offset + 2 * STRIDE] = column.pixel2;
-	
+
       // load remaining pixels to be able to vertically transform the window
 
-      for(int i = 3; i < (3 + WIN_SIZE_Y); i++) 
+      for(int i = 3; i < (3 + WIN_SIZE_Y); i++)
       {
         buffer[column.offset + i * STRIDE] = column.loader.loadFrom(input);
       }
- 
+
       // remember last 3 pixels for use in next iteration
       column.pixel0 = buffer[column.offset + (WIN_SIZE_Y + 0) * STRIDE];
       column.pixel1 = buffer[column.offset + (WIN_SIZE_Y + 1) * STRIDE];
@@ -169,7 +169,7 @@ namespace dwt_cuda {
       // vertically transform the column in transform buffer
 	  buffer.forEachVerticalOdd(column.offset, Forward53Predict());
       buffer.forEachVerticalEven(column.offset, Forward53Update());
-	  
+
     }
 
 
@@ -178,7 +178,7 @@ namespace dwt_cuda {
     /// @tparam CHECK_WRITES  true if output writer must check boundaries
     /// @param in        input image
     /// @param out       output buffer
-    /// @param sizeX     width of the input image 
+    /// @param sizeX     width of the input image
     /// @param sizeY     height of the input image
     /// @param winSteps  number of sliding window steps
     template <bool CHECK_LOADS, bool CHECK_WRITES>
@@ -186,15 +186,15 @@ namespace dwt_cuda {
                               const int sizeX, const int sizeY,
                               const int winSteps) {
       // info about one main and one boundary columns processed by this thread
-      FDWT53Column<CHECK_LOADS> column;    
+      FDWT53Column<CHECK_LOADS> column;
       FDWT53Column<CHECK_LOADS> boundaryColumn;  // only few threads use this
 
-      // Initialize all column info: initialize loaders, compute offset of 
+      // Initialize all column info: initialize loaders, compute offset of
       // column in shared buffer and initialize loader of column.
       const int firstY = blockIdx.y * WIN_SIZE_Y * winSteps;
 	    initColumn(column, in, sizeX, sizeY, threadIdx.x, firstY); //has been checked Mar 9th
 
-	  
+
       // first 3 threads initialize boundary columns, others do not use them
       boundaryColumn.clear();
       if(threadIdx.x < 3) {
@@ -205,9 +205,9 @@ namespace dwt_cuda {
         initColumn(boundaryColumn, in, sizeX, sizeY, colId, firstY);
 
       }
-	  
-	  
-      // index of column which will be written into output by this thread      
+
+
+      // index of column which will be written into output by this thread
 	  const int outColumnIndex = parityIdx<WIN_SIZE_X>();
 
       // offset of column which will be written by this thread into output
@@ -219,7 +219,7 @@ namespace dwt_cuda {
 	    writer.init(sizeX, sizeY, outputFirstX, firstY);
 			__syncthreads();
 
-	  
+
       // Sliding window iterations:
       // Each iteration assumes that first 3 pixels of each column are loaded.
      for(int w = 0; w < winSteps; w++) {
@@ -227,23 +227,23 @@ namespace dwt_cuda {
 	 // For each column (including boundary columns): load and vertically
         // transform another WIN_SIZE_Y lines.
         loadAndVerticallyTransform(column, in);
-        if(threadIdx.x < 3) { 
-          loadAndVerticallyTransform(boundaryColumn, in); 
+        if(threadIdx.x < 3) {
+          loadAndVerticallyTransform(boundaryColumn, in);
         }
- 		
+
         // wait for all columns to be vertically transformed and transform all
         // output rows horizontally
         __syncthreads();
-		
+
 
 		buffer.forEachHorizontalOdd(2, WIN_SIZE_Y, Forward53Predict());
         __syncthreads();
-		
+
         buffer.forEachHorizontalEven(2, WIN_SIZE_Y, Forward53Update());
 
         // wait for all output rows to be transformed horizontally and write
         // them into output buffer
-        __syncthreads();	
+        __syncthreads();
 
 
         for(int r = 2; r < (2 + WIN_SIZE_Y); r += 2) {
@@ -256,20 +256,20 @@ namespace dwt_cuda {
         // before proceeding to next iteration, wait for all output columns
         // to be written into the output
         __syncthreads();
-			
+
 	    }
-	
+
     }
 
-    
+
   public:
     /// Determines, whether this block's pixels touch boundary and selects
     /// right version of algorithm according to it - for many threadblocks, it
-    /// selects version which does not deal with boundary mirroring and thus is 
+    /// selects version which does not deal with boundary mirroring and thus is
     /// slightly faster.
     /// @param in     input image
     /// @param out    output buffer
-    /// @param sx     width of the input image 
+    /// @param sx     width of the input image
     /// @param sy     height of the input image
     /// @param steps  number of sliding window steps
     __device__ static void run(const int * const in, int * const out,
@@ -292,32 +292,32 @@ namespace dwt_cuda {
       // if(threadIdx.x == 0) {
       //   printf("fdwt53 run");
       // }
-      if(atBottomBoudary) 
+      if(atBottomBoudary)
       {
         // near bottom boundary => check both writing and reading
         fdwt53.transform<true, true>(in, out, sx, sy, steps);
-      } else if(atRightBoudary) 
+      } else if(atRightBoudary)
       {
         // near right boundary only => check writing only
         fdwt53.transform<false, true>(in, out, sx, sy, steps);
-      } else 
+      } else
       {
         // no nearby boundary => check nothing
         fdwt53.transform<false, false>(in, out, sx, sy, steps);
       }
     }
     // }
-    
+
   }; // end of class FDWT53
-  
-  
-  
+
+
+
   /// Main GPU 5/3 FDWT entry point.
   /// @tparam WIN_SX   width of sliding window to be used
   /// @tparam WIN_SY   height of sliding window to be used
   /// @param input     input image
   /// @param output    output buffer
-  /// @param sizeX     width of the input image 
+  /// @param sizeX     width of the input image
   /// @param sizeY     height of the input image
   /// @param winSteps  number of sliding window steps
   template <int WIN_SX, int WIN_SY>
@@ -328,20 +328,20 @@ namespace dwt_cuda {
     FDWT53<WIN_SX, WIN_SY>::run(input, output, sizeX, sizeY, winSteps);
   }
 
-  
 
-  /// Only computes optimal number of sliding window steps, 
+
+  /// Only computes optimal number of sliding window steps,
   /// number of threadblocks and then lanches the 5/3 FDWT kernel.
   /// @tparam WIN_SX  width of sliding window
   /// @tparam WIN_SY  height of sliding window
   /// @param in       input image
   /// @param out      output buffer
-  /// @param sx       width of the input image 
+  /// @param sx       width of the input image
   /// @param sy       height of the input image
   template <int WIN_SX, int WIN_SY>
   void launchFDWT53Kernel (int * in, int * out, int sx, int sy) {
     // compute optimal number of steps of each sliding window
-	
+
     const int steps = divRndUp(sy, 15 * WIN_SY);
 
 	int gx = divRndUp(sx, WIN_SX);
@@ -352,18 +352,18 @@ namespace dwt_cuda {
     // prepare grid size
     dim3 gSize(divRndUp(sx, WIN_SX), divRndUp(sy, WIN_SY * steps));
     // printf("\n globalx=%d, globaly=%d, blocksize=%d\n", gSize.x, gSize.y, WIN_SX);
-    
+
     // run kernel, possibly measure time and finally check the call
     // PERF_BEGIN
     fdwt53Kernel<WIN_SX, WIN_SY><<<gSize, WIN_SX>>>(in, out, sx, sy, steps);
     // PERF_END("        FDWT53", sx, sy)
     // CudaDWTTester::checkLastKernelCall("FDWT 5/3 kernel");
     printf("fdwt53Kernel in launchFDWT53Kernel has finished");
-	
+
   }
-  
-  
-  
+
+
+
   /// Forward 5/3 2D DWT. See common rules (above) for more details.
   /// @param in      Expected to be normalized into range [-128, 127].
   ///                Will not be preserved (will be overwritten).
@@ -373,7 +373,7 @@ namespace dwt_cuda {
   /// @param levels  number of recursive DWT levels
   void fdwt53(int * in, int * out, int sizeX, int sizeY, int levels) {
     // select right width of kernel for the size of the image
-	
+
     if(sizeX >= 960) {
       launchFDWT53Kernel<192, 8>(in, out, sizeX, sizeY);
     } else if (sizeX >= 480) {
@@ -381,20 +381,20 @@ namespace dwt_cuda {
     } else {
       launchFDWT53Kernel<64, 8>(in, out, sizeX, sizeY);
     }
-    
+
     // if this was not the last level, continue recursively with other levels
     if(levels > 1) {
       // copy output's LL band back into input buffer
-      const int llSizeX = divRndUp(sizeX, 2); 
+      const int llSizeX = divRndUp(sizeX, 2);
       const int llSizeY = divRndUp(sizeY, 2);
 	 // printf("\n llSizeX = %d , llSizeY = %d \n", llSizeX, llSizeY);
       memCopy(in, out, llSizeX, llSizeY); //the function memCopy in cuda_dwt/common.h line 238
-      
+
       // run remaining levels of FDWT
       fdwt53(in, out, llSizeX, llSizeY, levels - 1);
     }
   }
-  
-  
+
+
 
 } // end of namespace dwt_cuda
