@@ -161,13 +161,13 @@ jobs:
           clang++ -I. -I/include -fno-strict-aliasing dwt_cuda/fdwt53.cu dwt_cuda/fdwt97.cu  dwt_cuda/common.cu  dwt_cuda/rdwt97.cu  dwt_cuda/rdwt53.cu components.cu dwt.cu main.cu -c --cuda-path=${{ github.workspace }}/cuda-10.1  --cuda-gpu-arch=sm_61 -L${{ github.workspace }}/cuda-10.1/lib64 -lcudart_static -ldl -lrt -pthread -save-temps -v  || true
           export LD_LIBRARY_PATH=${{ github.workspace }}/build/runtime:${{ github.workspace }}/build/runtime/threadPool:$LD_LIBRARY_PATH
           export PATH=${{ github.workspace }}/build/compilation:$PATH
-          kernelTranslator common-cuda-nvptx64-nvidia-cuda-sm_50.bc common.bc
-          kernelTranslator components-cuda-nvptx64-nvidia-cuda-sm_50.bc components.bc
-          kernelTranslator fdwt53-cuda-nvptx64-nvidia-cuda-sm_50.bc fdwt53.bc
-          kernelTranslator dwt-cuda-nvptx64-nvidia-cuda-sm_50.bc dwt.bc
-          kernelTranslator fdwt97-cuda-nvptx64-nvidia-cuda-sm_50.bc fdwt97.bc
-          kernelTranslator rdwt97-cuda-nvptx64-nvidia-cuda-sm_50.bc rdwt97.bc
-          kernelTranslator rdwt53-cuda-nvptx64-nvidia-cuda-sm_50.bc rdwt53.bc
+          kernelTranslator common-cuda-nvptx64-nvidia-cuda-sm_61.bc common.bc
+          kernelTranslator components-cuda-nvptx64-nvidia-cuda-sm_61.bc components.bc
+          kernelTranslator fdwt53-cuda-nvptx64-nvidia-cuda-sm_61.bc fdwt53.bc
+          kernelTranslator dwt-cuda-nvptx64-nvidia-cuda-sm_61.bc dwt.bc
+          kernelTranslator fdwt97-cuda-nvptx64-nvidia-cuda-sm_61.bc fdwt97.bc
+          kernelTranslator rdwt97-cuda-nvptx64-nvidia-cuda-sm_61.bc rdwt97.bc
+          kernelTranslator rdwt53-cuda-nvptx64-nvidia-cuda-sm_61.bc rdwt53.bc
           hostTranslator main-host-x86_64-unknown-linux-gnu.bc host.bc
           hostTranslator common-host-x86_64-unknown-linux-gnu.bc common_host.bc
           hostTranslator components-host-x86_64-unknown-linux-gnu.bc components_host.bc
