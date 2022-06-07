@@ -7,14 +7,14 @@ project(
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # compile kernel translator
-include_directories(./KernelTranslation/include)
+include_directories(./KernelTranslation/include/x86)
 add_subdirectory(KernelTranslation)
 
 add_executable(kernelTranslator KernelTranslation.cpp)
 target_link_libraries(kernelTranslator spmd2mpmd ${GCC_COVERAGE_LINK_FLAGS})
 
 # compile host translator
-include_directories(./HostTranslation/include)
+include_directories(./HostTranslation/include/x86)
 add_subdirectory(HostTranslation)
 
 add_executable(hostTranslator HostTranslation.cpp)

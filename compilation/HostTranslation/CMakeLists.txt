@@ -12,10 +12,10 @@ set(LIB_NAME cudaRuntime2cpuRuntime)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_BUILD_TYPE Debug)
-include_directories(./include)
+include_directories(./include/x86)
 
-file(GLOB proj_HEADERS "include/*.h")
-file(GLOB proj_SOURCES "lib/*.cpp")
+file(GLOB proj_HEADERS "include/x86/*.h")
+file(GLOB proj_SOURCES "src/x86/*.cpp")
 
 # Add core library.
 add_library(${LIB_NAME} SHARED ${proj_HEADERS} ${proj_SOURCES})
