@@ -11,7 +11,7 @@ Currently, CuPBoP support serveral CPU backends, including x86, AArch64, and RIS
 ### Prerequisites
 
 - Linux: Verified on Ubuntu 18.04
-- LLVM10.0
+- LLVM14.0
 - NVIDIA CUDA-toolkit
 - x86 CPU
 - pthread
@@ -22,15 +22,11 @@ Currently, CuPBoP support serveral CPU backends, including x86, AArch64, and RIS
 1. Clone from github
 
    ```bash
-   git clone https://github.com/cupbop/CuPBoP
+   git clone https://github.com/drcut/CuPBoP
    cd CuPBoP
    export CuPBoP_PATH=`pwd`
    export LD_LIBRARY_PATH=$CuPBoP_PATH/build/runtime:$CuPBoP_PATH/build/runtime/threadPool:$LD_LIBRARY_PATH
    ```
-
-   If you are using boson, you can pre-installed llvm 10.0.0\
-   `LLVM_PATH=/opt/llvm-10.0.0`\
-   `export PATH=$LLVM_PATH/bin:$PATH`
 
 2. As CuPBoP relies on CUDA structures, we need to download the CUDA header file
 
