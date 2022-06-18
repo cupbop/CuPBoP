@@ -59,10 +59,9 @@ void InsertSyncAfterKernelLaunch(llvm::Module *M) {
             if (launch_function_name.find(calledFunction->getName().str()) !=
                 launch_function_name.end()) {
               // insert a sync after launch
-              if (callInst->getNextNonDebugInstruction()) {
-                llvm::CallInst::Create(func_launch, "",
-                                       callInst->getNextNonDebugInstruction());
-              }
+              auto sync_call =
+                  llvm::CallInst::Create(func_launch, "inserted_sync");
+              sync_call->insertAfter(callInst);
             }
           }
         }
@@ -188,7 +187,6 @@ void ReplaceKernelLaunch(llvm::Module *M) {
                   Function *FC = rep->second;
                   BitCastInst *B = new BitCastInst(FC, I8, "", callInst);
                   callInst->setArgOperand(0, B);
-
                   continue;
                 }
 
@@ -201,20 +199,6 @@ void ReplaceKernelLaunch(llvm::Module *M) {
                   prior name before _host is add
                 */
                 std::string oldName = functionOperand->getName().str();
-                // For LLVM>=14, it will add _device_stub prefix for the kernel
-                // name, thus, we need to remove the prefix
-                // example:
-                // from: _Z24__device_stub__HistogramPjS_jj
-                // to: HistogramPjS_jj
-                oldName = std::regex_replace(oldName,
-                                             std::regex("__device_stub__"), "");
-                // remove _Z24
-                for (int i = 2; i < oldName.length(); i++) {
-                  if (oldName[i] >= '0' && oldName[i] <= '9')
-                    continue;
-                  oldName = oldName.substr(i);
-                  break;
-                }
 
                 // if parent function is __host and same as the
                 // cudaKernelLaunch
@@ -224,6 +208,21 @@ void ReplaceKernelLaunch(llvm::Module *M) {
                   newName =
                       oldName.substr(0, oldName.length() - 5) + "_wrapper";
                 }
+                // For LLVM>=14, it will add _device_stub prefix for the kernel
+                // name, thus, we need to remove the prefix
+                // example:
+                // from: _Z24__device_stub__HistogramPjS_jj
+                // to: HistogramPjS_jj
+                newName = std::regex_replace(newName,
+                                             std::regex("__device_stub__"), "");
+                // remove _Z24
+                for (int i = 2; i < newName.length(); i++) {
+                  if (newName[i] >= '0' && newName[i] <= '9')
+                    continue;
+                  newName = newName.substr(i);
+                  break;
+                }
+
                 std::cout << "Change Kernel Name to: " << newName << std::endl;
 
                 Function *F =
