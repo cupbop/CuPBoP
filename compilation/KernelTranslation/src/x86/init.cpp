@@ -42,7 +42,7 @@ bool inline_warp_level_func(llvm::Module *M) {
             if (func_name == "_Z10__any_syncji" ||
                 func_name.find("shfl_down_sync") != std::string::npos) {
               InlineFunctionInfo IFI;
-              InlineFunction(c, IFI);
+              InlineFunction(*c, IFI);
               need_remove.insert(c->getCalledFunction());
               changed = true;
             }
@@ -102,7 +102,7 @@ bool inline_func_with_tid(llvm::Module *M) {
   }
   for (auto c : need_inline) {
     InlineFunctionInfo IFI;
-    InlineFunction(c, IFI);
+    InlineFunction(*c, IFI);
   }
   return changed;
 }

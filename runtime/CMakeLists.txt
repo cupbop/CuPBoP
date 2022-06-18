@@ -10,7 +10,9 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 add_subdirectory(threadPool)
 
 # compile x86 runtime library
+include_directories(./include/)
 include_directories(./include/x86)
+include_directories(./threadPool/include/)
 include_directories(./threadPool/include/x86)
-file(GLOB proj_SOURCES "src/vortex/*.cpp")
+file(GLOB proj_SOURCES "src/x86/*.cpp")
 add_library(${LIB_NAME} SHARED ${proj_SOURCES})

@@ -1,6 +1,8 @@
 #ifndef __NVVM2x86_TOOL__
 #define __NVVM2x86_TOOL__
 
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/Instructions.h"
 #include "llvm/IR/Module.h"
 llvm::Module *LoadModuleFromFilr(char *file_name);
 void DumpModule(llvm::Module *M, char *file_name);
@@ -22,4 +24,10 @@ bool has_barrier(llvm::BasicBlock *B);
 bool has_block_barrier(llvm::BasicBlock *B);
 bool has_barrier(llvm::Function *F);
 void replace_dynamic_shared_memory(llvm::Module *M);
+llvm::LoadInst *createLoad(llvm::IRBuilder<> &B, llvm::Value *addr,
+                           bool isVolatile = false);
+llvm::Value *createInBoundsGEP(llvm::IRBuilder<> &B, llvm::Value *ptr,
+                               llvm::ArrayRef<llvm::Value *> idxlist);
+llvm::Value *createGEP(llvm::IRBuilder<> &B, llvm::Value *ptr,
+                       llvm::ArrayRef<llvm::Value *> idxlist);
 #endif

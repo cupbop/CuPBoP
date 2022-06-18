@@ -8,6 +8,7 @@
 #include "llvm/Support/ToolOutputFile.h"
 #include <iostream>
 #include <map>
+#include <regex>
 #include <set>
 
 using namespace llvm;
@@ -200,8 +201,23 @@ void ReplaceKernelLaunch(llvm::Module *M) {
                   prior name before _host is add
                 */
                 std::string oldName = functionOperand->getName().str();
+                // For LLVM>=14, it will add _device_stub prefix for the kernel
+                // name, thus, we need to remove the prefix
+                // example:
+                // from: _Z24__device_stub__HistogramPjS_jj
+                // to: HistogramPjS_jj
+                oldName = std::regex_replace(oldName,
+                                             std::regex("__device_stub__"), "");
+                // remove _Z24
+                for (int i = 2; i < oldName.length(); i++) {
+                  if (oldName[i] >= '0' && oldName[i] <= '9')
+                    continue;
+                  oldName = oldName.substr(i);
+                  break;
+                }
 
-                // if parent function is __host and same as the cudaKernelLaunch
+                // if parent function is __host and same as the
+                // cudaKernelLaunch
                 std::string newName = oldName + "_wrapper";
                 if (func_name == oldName && host_changed &&
                     oldName.find("_host") != std::string::npos) {
@@ -220,12 +236,11 @@ void ReplaceKernelLaunch(llvm::Module *M) {
                 kernels.insert({functionOperand->getName().str(), F});
               }
             } else if (cuda_register_kernel_names.find(
-                           calledFunction->getName()) !=
+                           calledFunction->getName().str()) !=
                        cuda_register_kernel_names.end()) {
               // if the called function collides with kernel definiton
               // TODO: some reason changes all occurences of the function name
               // for both cudaKernelLaunch calls and regular function call
-              // errs() << *inst;
               host_changed = true;
               calledFunction->setName(calledFunction->getName() + "_host");
               std::cout << std::endl;

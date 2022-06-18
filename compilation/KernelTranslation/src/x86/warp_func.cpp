@@ -67,7 +67,8 @@ void handle_warp_vote(llvm::Module *M) {
     assert(warp_vote_ptr != NULL);
     auto intra_warp_index_addr = M->getGlobalVariable("intra_warp_index");
     auto intra_warp_index =
-        new LoadInst(intra_warp_index_addr, "intra_warp_index", sync_inst);
+        new LoadInst(intra_warp_index_addr->getType()->getPointerElementType(),
+                     intra_warp_index_addr, "intra_warp_index", sync_inst);
 
     auto GEP = GetElementPtrInst::Create(NULL,          // Pointee type
                                          warp_vote_ptr, // Alloca
@@ -168,23 +169,22 @@ void handle_warp_shfl(llvm::Module *M) {
     auto shfl_offset = shfl_inst->getArgOperand(2);
 
     auto intra_warp_index =
-        builder.CreateLoad(M->getGlobalVariable("intra_warp_index"));
-    builder.CreateStore(
-        shfl_variable,
-        builder.CreateGEP(warp_shfl_ptr, {ZERO, intra_warp_index}));
+        createLoad(builder, M->getGlobalVariable("intra_warp_index"));
+    builder.CreateStore(shfl_variable, createGEP(builder, warp_shfl_ptr,
+                                                 {ZERO, intra_warp_index}));
     // we should create barrier before store
     CreateIntraWarpBarrier(intra_warp_index);
     // load shuffled data
     auto new_intra_warp_index =
-        builder.CreateLoad(M->getGlobalVariable("intra_warp_index"));
+        createLoad(builder, M->getGlobalVariable("intra_warp_index"));
     auto shfl_name = shfl_inst->getCalledFunction()->getName().str();
     if (shfl_name.find("down") != shfl_name.npos) {
       auto calculate_offset = builder.CreateBinOp(
           Instruction::Add, new_intra_warp_index, shfl_offset);
       auto new_index = builder.CreateBinOp(Instruction::SRem, calculate_offset,
                                            ConstantInt::get(I32, 32));
-      auto gep = builder.CreateGEP(warp_shfl_ptr, {ZERO, new_index});
-      auto load_inst = builder.CreateLoad(gep);
+      auto gep = createGEP(builder, warp_shfl_ptr, {ZERO, new_index});
+      auto load_inst = createLoad(builder, gep);
 
       // create barrier
       CreateIntraWarpBarrier(new_intra_warp_index);
@@ -195,8 +195,8 @@ void handle_warp_shfl(llvm::Module *M) {
           Instruction::Sub, new_intra_warp_index, shfl_offset);
       auto new_index = builder.CreateBinOp(Instruction::SRem, calculate_offset,
                                            ConstantInt::get(I32, 32));
-      auto gep = builder.CreateGEP(warp_shfl_ptr, {ZERO, new_index});
-      auto load_inst = builder.CreateLoad(gep);
+      auto gep = createGEP(builder, warp_shfl_ptr, {ZERO, new_index});
+      auto load_inst = createLoad(builder, gep);
 
       // create barrier
       CreateIntraWarpBarrier(new_intra_warp_index);
@@ -207,8 +207,8 @@ void handle_warp_shfl(llvm::Module *M) {
           Instruction::Xor, new_intra_warp_index, shfl_offset);
       auto new_index = builder.CreateBinOp(Instruction::SRem, calculate_offset,
                                            ConstantInt::get(I32, 32));
-      auto gep = builder.CreateGEP(warp_shfl_ptr, {ZERO, new_index});
-      auto load_inst = builder.CreateLoad(gep);
+      auto gep = createGEP(builder, warp_shfl_ptr, {ZERO, new_index});
+      auto load_inst = createLoad(builder, gep);
 
       // create barrier
       CreateIntraWarpBarrier(new_intra_warp_index);

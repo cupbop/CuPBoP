@@ -11,7 +11,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IRReader/IRReader.h"
-#include "llvm/Support/TargetRegistry.h"
+#include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/ToolOutputFile.h"
 #include "llvm/Target/TargetMachine.h"
@@ -19,6 +19,7 @@
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
 #include <iostream>
+#include <map>
 
 using namespace llvm;
 
@@ -52,6 +53,14 @@ void decode_input(llvm::Module *M) {
     if (!isKernelFunction(M, F))
       continue;
     auto func_name = F->getName().str();
+    // remove mangle prefix
+    // remove _Z24
+    for (int pos = 2; pos < func_name.length(); pos++) {
+      if (func_name[pos] >= '0' && func_name[pos] <= '9')
+        continue;
+      func_name = func_name.substr(pos);
+      break;
+    }
     llvm::IRBuilder<> Builder(M->getContext());
 
     FunctionCallee fc =
@@ -78,7 +87,7 @@ void decode_input(llvm::Module *M) {
           *M, Int32T, false, llvm::GlobalValue::ExternalLinkage, NULL,
           "thread_memory_size", NULL, llvm::GlobalValue::GeneralDynamicTLSModel,
           0, false);
-      Value *loadedValue = Builder.CreateLoad(global_mem);
+      Value *loadedValue = createLoad(Builder, global_mem);
 
       llvm::FunctionType *LaunchFun2 = FunctionType::get(
           PointerType::get(PointerType::get(Int32T, 0), 0), NULL);
@@ -120,12 +129,12 @@ void decode_input(llvm::Module *M) {
       Type *ArgType = ii->getType();
 
       // calculate addr
-      Value *GEP = Builder.CreateGEP(input_arg, ConstantInt::get(Int32T, idx));
+      Value *GEP = createGEP(Builder, input_arg, ConstantInt::get(Int32T, idx));
       // load corresponding int*
-      GEP = Builder.CreateLoad(GEP);
+      GEP = createLoad(Builder, GEP);
       // bitcast
       GEP = Builder.CreateBitOrPointerCast(GEP, PointerType::get(ArgType, 0));
-      Value *Arg = Builder.CreateLoad(GEP);
+      Value *Arg = createLoad(Builder, GEP);
       Arguments.push_back(Arg);
       ++idx;
     }

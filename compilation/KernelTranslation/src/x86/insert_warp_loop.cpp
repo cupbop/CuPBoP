@@ -179,7 +179,7 @@ llvm::Instruction *GetContextArray(llvm::Instruction *instruction,
   llvm::AllocaInst *Alloca = nullptr;
 
   auto block_size_addr = M->getGlobalVariable("block_size");
-  auto block_size = builder.CreateLoad(block_size_addr);
+  auto block_size = createLoad(builder, block_size_addr);
   Alloca = builder.CreateAlloca(AllocType, block_size, varName);
 
   contextArrays[varName] = Alloca;
@@ -208,9 +208,9 @@ llvm::Instruction *AddContextSave(llvm::Instruction *instruction,
   std::vector<llvm::Value *> gepArgs;
 
   auto inter_warp_index =
-      builder.CreateLoad(M->getGlobalVariable("inter_warp_index"));
+      createLoad(builder, M->getGlobalVariable("inter_warp_index"));
   auto intra_warp_index =
-      builder.CreateLoad(M->getGlobalVariable("intra_warp_index"));
+      createLoad(builder, M->getGlobalVariable("intra_warp_index"));
   auto thread_idx = builder.CreateBinOp(
       Instruction::Add, intra_warp_index,
       builder.CreateBinOp(Instruction::Mul, inter_warp_index,
@@ -218,7 +218,7 @@ llvm::Instruction *AddContextSave(llvm::Instruction *instruction,
       "thread_idx");
   gepArgs.push_back(thread_idx);
 
-  return builder.CreateStore(instruction, builder.CreateGEP(alloca, gepArgs));
+  return builder.CreateStore(instruction, createGEP(builder, alloca, gepArgs));
 }
 
 llvm::Instruction *AddContextRestore(llvm::Value *val,
@@ -242,9 +242,9 @@ llvm::Instruction *AddContextRestore(llvm::Value *val,
   auto M = before->getParent()->getParent()->getParent();
   auto I32 = llvm::Type::getInt32Ty(M->getContext());
   auto inter_warp_index =
-      builder.CreateLoad(M->getGlobalVariable("inter_warp_index"));
+      createLoad(builder, M->getGlobalVariable("inter_warp_index"));
   auto intra_warp_index =
-      builder.CreateLoad(M->getGlobalVariable("intra_warp_index"));
+      createLoad(builder, M->getGlobalVariable("intra_warp_index"));
   auto thread_idx = builder.CreateBinOp(
       Instruction::Add, intra_warp_index,
       builder.CreateBinOp(Instruction::Mul, inter_warp_index,
@@ -253,11 +253,11 @@ llvm::Instruction *AddContextRestore(llvm::Value *val,
   gepArgs.push_back(thread_idx);
 
   llvm::Instruction *gep =
-      dyn_cast<Instruction>(builder.CreateGEP(alloca, gepArgs));
+      dyn_cast<Instruction>(createGEP(builder, alloca, gepArgs));
   if (isAlloca) {
     return gep;
   }
-  return builder.CreateLoad(gep);
+  return createLoad(builder, gep);
 }
 
 void AddContextSaveRestore(llvm::Instruction *instruction,
@@ -316,7 +316,7 @@ void handle_alloc(llvm::Function *F) {
     // generate a new alloc
     auto block_size_addr = M->getGlobalVariable("block_size");
     IRBuilder<> builder(inst);
-    auto block_size = builder.CreateLoad(block_size_addr);
+    auto block_size = createLoad(builder, block_size_addr);
 
     llvm::Type *elementType = NULL;
     if (dyn_cast<AllocaInst>(inst)->getType()->getElementType()) {
@@ -338,16 +338,16 @@ void handle_alloc(llvm::Function *F) {
       IRBuilder<> builder(user);
       // std::vector<llvm::Value *> gepArgs;
       auto inter_warp_index =
-          builder.CreateLoad(M->getGlobalVariable("inter_warp_index"));
+          createLoad(builder, M->getGlobalVariable("inter_warp_index"));
       auto intra_warp_index =
-          builder.CreateLoad(M->getGlobalVariable("intra_warp_index"));
+          createLoad(builder, M->getGlobalVariable("intra_warp_index"));
       auto thread_idx = builder.CreateBinOp(
           Instruction::Add, intra_warp_index,
           builder.CreateBinOp(Instruction::Mul, inter_warp_index,
                               ConstantInt::get(I32, 32)),
           "thread_idx");
 
-      auto gep = builder.CreateGEP(Alloca, thread_idx);
+      auto gep = createGEP(builder, Alloca, thread_idx);
 
       user->replaceUsesOfWith(inst, gep);
     }
@@ -479,19 +479,19 @@ BasicBlock *insert_loop_cond(llvm::BasicBlock *InsertCondBefore,
     auto inter_warp_index = M->getGlobalVariable("inter_warp_index");
     auto block_size = M->getGlobalVariable("block_size");
     auto warp_cnt =
-        builder.CreateBinOp(Instruction::SDiv, builder.CreateLoad(block_size),
+        builder.CreateBinOp(Instruction::SDiv, createLoad(builder, block_size),
                             ConstantInt::get(I32, 32), "warp_number");
 
     cmpResult =
-        builder.CreateICmpULT(builder.CreateLoad(inter_warp_index), warp_cnt);
+        builder.CreateICmpULT(createLoad(builder, inter_warp_index), warp_cnt);
   } else {
     auto intra_warp_index = M->getGlobalVariable("intra_warp_index");
     auto block_size = M->getGlobalVariable("block_size");
     if (!need_nested_loop) {
-      cmpResult = builder.CreateICmpULT(builder.CreateLoad(intra_warp_index),
-                                        builder.CreateLoad(block_size));
+      cmpResult = builder.CreateICmpULT(createLoad(builder, intra_warp_index),
+                                        createLoad(builder, block_size));
     } else {
-      cmpResult = builder.CreateICmpULT(builder.CreateLoad(intra_warp_index),
+      cmpResult = builder.CreateICmpULT(createLoad(builder, intra_warp_index),
                                         ConstantInt::get(I32, 32));
     }
   }
@@ -513,13 +513,13 @@ BasicBlock *insert_loop_inc(llvm::BasicBlock *InsertIncBefore,
   if (intra_warp_loop) { // intra warp
     auto intra_warp_index = M->getGlobalVariable("intra_warp_index");
     auto new_index = builder.CreateBinOp(
-        Instruction::Add, builder.CreateLoad(intra_warp_index),
+        Instruction::Add, createLoad(builder, intra_warp_index),
         ConstantInt::get(I32, 1), "intra_warp_index_increment");
     builder.CreateStore(new_index, intra_warp_index);
   } else { // inter warp
     auto inter_warp_index = M->getGlobalVariable("inter_warp_index");
     auto new_index = builder.CreateBinOp(
-        Instruction::Add, builder.CreateLoad(inter_warp_index),
+        Instruction::Add, createLoad(builder, inter_warp_index),
         ConstantInt::get(I32, 1), "inter_warp_index_increment");
     builder.CreateStore(new_index, inter_warp_index);
   }

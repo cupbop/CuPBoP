@@ -18,4 +18,4 @@ file(GLOB proj_HEADERS "include/x86/*.h")
 file(GLOB proj_SOURCES "src/x86/*.cpp")
 
 # Add core library.
-add_library(${LIB_NAME} SHARED ${proj_HEADERS} ${proj_SOURCES})
+add_library(${LIB_NAME} STATIC ${proj_HEADERS} ${proj_SOURCES})

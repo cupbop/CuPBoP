@@ -9,13 +9,31 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-cudaError_t cudaGetDevice(int *devPtr) { *devPtr = 0; }
+cudaError_t cudaGetDevice(int *devPtr) {
+  *devPtr = 0;
+  return cudaSuccess;
+}
 const char *cudaGetErrorName(cudaError_t error) { return "SUCCESS\n"; }
-cudaError_t cudaDeviceReset(void) { scheduler_uninit(); }
-cudaError_t cudaDeviceSynchronize(void) { cuSynchronizeBarrier(); }
-cudaError_t cudaThreadSynchronize(void) { cuSynchronizeBarrier(); }
-cudaError_t cudaFree(void *devPtr) { free(devPtr); }
-cudaError_t cudaFreeHost(void *devPtr) { free(devPtr); }
+cudaError_t cudaDeviceReset(void) {
+  scheduler_uninit();
+  return cudaSuccess;
+}
+cudaError_t cudaDeviceSynchronize(void) {
+  cuSynchronizeBarrier();
+  return cudaSuccess;
+}
+cudaError_t cudaThreadSynchronize(void) {
+  cuSynchronizeBarrier();
+  return cudaSuccess;
+}
+cudaError_t cudaFree(void *devPtr) {
+  free(devPtr);
+  return cudaSuccess;
+}
+cudaError_t cudaFreeHost(void *devPtr) {
+  free(devPtr);
+  return cudaSuccess;
+}
 
 cudaError_t cudaLaunchKernel(const void *func, dim3 gridDim, dim3 blockDim,
                              void **args, size_t sharedMem,
@@ -31,7 +49,7 @@ cudaError_t cudaLaunchKernel(const void *func, dim3 gridDim, dim3 blockDim,
 
   int lstatus = cuLaunchKernel(&ker);
 
-  // std::cout << "ret cudaLKernel" << std::endl;
+  return cudaSuccess;
 }
 cudaError_t cudaMalloc(void **devPtr, size_t size) {
   *devPtr = malloc(size);
@@ -68,15 +86,13 @@ cudaError_t cudaMemcpy(void *dst, const void *src, size_t count,
 cudaError_t cudaMemcpyToSymbol_host(void *dst, const void *src, size_t count,
                                     size_t offset, cudaMemcpyKind kind) {
   assert(offset == 0 && "DO not support offset !=0\n");
-  memcpy(dst, src + offset, count);
+  memcpy(dst, (char *)src + offset, count);
   return cudaSuccess;
 }
 
 cudaError_t cudaSetDevice(int device) {
-  // error checking
-  // std::cout << "cudaSetDevice Called" << std::endl;
   init_device();
-  // std::cout << "cudaSetDevice Ret" << std::endl;
+  return cudaSuccess;
 }
 
 cudaError_t cudaStreamCopyAttributes(cudaStream_t dst, cudaStream_t src) {

@@ -99,7 +99,7 @@ void mem_share2global(llvm::Module *M) {
             global_memory->setComdat(comdat);
             global_memory->setLinkage(llvm::GlobalValue::LinkOnceODRLinkage);
             global_memory->setInitializer(undef);
-            global_memory->setAlignment(share_memory->getAlignment());
+            global_memory->setAlignment(share_memory->getAlign());
             corresponding_global_memory.insert(
                 std::pair<GlobalVariable *, GlobalVariable *>(share_memory,
                                                               global_memory));

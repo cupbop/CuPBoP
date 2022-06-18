@@ -29,7 +29,6 @@ int init_device() {
 
   // initialize scheduler
   int ret = scheduler_init(*device);
-
   if (ret != C_SUCCESS)
     return ret;
 
@@ -182,6 +181,7 @@ int schedulerEnqueueKernel(cu_kernel **k) {
 
   pthread_cond_broadcast(&(scheduler->wake_pool));
   MUTEX_UNLOCK(scheduler->work_queue_lock);
+  return 0;
 }
 
 /*
@@ -191,6 +191,7 @@ int cuLaunchKernel(cu_kernel **k) {
   if (!scheduler) {
     init_device();
   }
+  std::cout << "launch\n" << std::flush;
   // Calculate Block Size N/numBlocks
 
   cu_kernel *ker = *k;
@@ -238,6 +239,7 @@ int cuLaunchKernel(cu_kernel **k) {
       MUTEX_UNLOCK(((cstreamData *)(ker->stream))->stream_lock);
     }
   }
+  return 0;
 }
 
 /*
@@ -346,7 +348,8 @@ RETRY:
       grid_size_x = gridDim.x;
       grid_size_y = gridDim.y;
       grid_size_z = gridDim.z;
-      dynamic_shared_memory = (int *)malloc(dynamic_shared_mem_size);
+      if (dynamic_shared_mem_size > 0)
+        dynamic_shared_memory = (int *)malloc(dynamic_shared_mem_size);
       int tmp = block_index;
       block_index_x = tmp / (grid_size_y * grid_size_z);
       tmp = tmp % (grid_size_y * grid_size_z);
