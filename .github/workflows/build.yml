@@ -21,7 +21,7 @@ jobs:
       - name: Install LLVM and Clang
         uses: KyleMayes/install-llvm-action@v1
         with:
-          version: "10.0"
+          version: "14.0"
       - name: Download CUDA header files
         run: |
           cd ${{ github.workspace }}
