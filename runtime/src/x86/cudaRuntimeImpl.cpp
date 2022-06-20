@@ -118,45 +118,24 @@ static int stream_counter = 1;
 
 */
 cudaError_t cudaStreamCreate(cudaStream_t *pStream) {
-  cstreamData *s = (cstreamData *)calloc(1, sizeof(cstreamData));
-  if (s == NULL)
-    return cudaErrorMemoryAllocation;
-  s->ev.status = C_RUN;
-  s->id = stream_counter;
-  stream_counter++;
-  s->stream_priority = DEFAULT;
-  create_KernelQueue(&(s->kernelQueue));
-
-  INIT_LOCK(s->stream_lock);
-  *pStream = (cudaStream_t)(s);
-
-  return cudaSuccess;
+  printf("No Implement\n");
+  exit(1);
 }
 
 cudaError_t cudaStreamDestroy(cudaStream_t stream) {
-  cstreamData *s = (cstreamData *)(stream);
-
-  free(s->kernelQueue);
-
-  DESTROY_LOCK(s->stream_lock);
-
-  free(s);
-
-  return cudaSuccess;
+  printf("No Implement\n");
+  exit(1);
 }
 
 cudaError_t cudaStreamSynchronize(cudaStream_t stream) {
-  cstreamData *e = ((cstreamData *)(stream));
-  MUTEX_LOCK(e->stream_lock);
-
-  e->ev.status = C_SYNCHRONIZE;
-  e->ev.numKernelsToWait = e->kernelQueue->waiting_count;
-  MUTEX_UNLOCK(e->stream_lock);
+  printf("No Implement\n");
+  exit(1);
 }
 
 cudaError_t cudaGetDeviceCount(int *count) {
   // dummy value
   *count = 1;
+  return cudaSuccess;
 }
 
 cudaError_t cudaGetDeviceProperties(cudaDeviceProp *deviceProp, int device) {

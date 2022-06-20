@@ -13,6 +13,8 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_BUILD_TYPE Debug)
 include_directories(./include)
 include_directories(./include/x86)
+include_directories(./concurrentqueue)
 
 file(GLOB proj_SOURCES "src/x86/*.cpp")
 add_library(${LIB_NAME} SHARED ${proj_SOURCES})
+ #include "blockingconcurrentqueue.h"

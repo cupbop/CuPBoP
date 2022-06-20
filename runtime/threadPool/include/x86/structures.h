@@ -3,20 +3,57 @@
 
 #include "cuda_runtime.h"
 #include "pthread.h"
+#include "blockingconcurrentqueue.h"
 
-typedef struct device {
+typedef struct device
+{
   int max_compute_units;
   int device_id;
 } cu_device;
 
-typedef struct c_thread {
+typedef struct c_thread
+{
   pthread_t thread;
   unsigned long executed_commands;
   unsigned index;
   bool exit;
 } cu_ptd;
 
-typedef struct scheduler_pool {
+// kernel information
+typedef struct kernel
+{
+
+  void *(*start_routine)(void *);
+
+  void **args;
+
+  dim3 gridDim;
+  dim3 blockDim;
+
+  size_t shared_mem;
+
+  cudaStream_t stream;
+
+  struct event *barrier;
+
+  int status;
+
+  int totalBlocks;
+
+  int blockSize;
+
+  int startBlockId;
+  int endBlockId;
+
+  kernel(const kernel &obj) : start_routine(obj.start_routine), args(obj.args),
+                              shared_mem(obj.shared_mem), blockSize(obj.blockSize),
+                              gridDim(obj.gridDim), blockDim(obj.blockDim), totalBlocks(obj.totalBlocks) {}
+} cu_kernel;
+
+using kernel_queue = moodycamel::BlockingConcurrentQueue<kernel *>;
+
+typedef struct scheduler_pool
+{
 
   struct c_thread *thread_pool;
 
@@ -35,34 +72,12 @@ typedef struct scheduler_pool {
   // lock for scheduler
   pthread_mutex_t work_queue_lock;
 
-  // C99 array at the end
-  // user kernel queue for only user called functions
-  struct kernel_queue *kernelQueue;
+  kernel_queue *kernelQueue;
 
 } cu_pool;
 
-struct kernel_queue {
-
-  struct kernel *head;
-  struct kernel *tail;
-
-  // finish command count
-  unsigned long finish_count;
-
-  // waiting to be run on threads
-  unsigned long waiting_count;
-
-  // running count
-  unsigned long running_count;
-
-  // total count
-  unsigned long kernel_count;
-
-  // current index for task to be run
-  unsigned long current_index;
-};
-
-typedef struct command {
+typedef struct command
+{
 
   struct kernel *ker;
 
@@ -71,14 +86,16 @@ typedef struct command {
 
 } cu_command;
 
-typedef struct argument {
+typedef struct argument
+{
   // size of the argument to allocation
   size_t size;
   void *value;
   unsigned int index;
 } cu_argument;
 
-typedef struct input_arg {
+typedef struct input_arg
+{
   // real values for the input
   char *p;
   struct argument *argus[];
@@ -87,14 +104,16 @@ typedef struct input_arg {
   // so that we can parse the arguments p
 } cu_input;
 
-enum StreamType {
+enum StreamType
+{
   DEFAULT,
   LOW,
   HIGH,
   EXT,
 };
 
-struct cStreamDataInternal {
+struct cStreamDataInternal
+{
   /*
       status of the stream (run , wait)
       Run: Stream will asynchronously assign the kernel assign with this stream
@@ -109,7 +128,8 @@ struct cStreamDataInternal {
   unsigned int count; // number of task left in the stream
 };
 
-typedef struct streamData {
+typedef struct streamData
+{
 
   // execution status of current event monitor
   struct cStreamDataInternal ev;
@@ -118,46 +138,12 @@ typedef struct streamData {
   unsigned int id;
   unsigned int stream_flags;
 
-  // queue of the kernels in this stream
-  struct kernel_queue *kernelQueue;
+  kernel_queue *kernelQueue;
 
 } cstreamData;
-// kernel information
-typedef struct kernel {
 
-  void *(*start_routine)(void *);
-
-  void **args;
-
-  dim3 gridDim;
-  dim3 blockDim;
-
-  struct kernel *next;
-  struct kernel *prev;
-
-  size_t shared_mem;
-
-  cudaStream_t stream;
-
-  struct event *barrier;
-
-  int status;
-
-  int totalBlocks;
-  int N;
-
-  int blockSize;
-  int kernelId;
-
-  // current blockId
-  int blockId;
-
-  // execute multiple blocks per fetch
-  int gpu_block_to_execute_per_cpu_thread;
-
-} cu_kernel;
-
-typedef struct asyncKernel {
+typedef struct asyncKernel
+{
   unsigned int numBlocks;
   unsigned int numThreads;
   struct event *evt;
@@ -170,17 +156,20 @@ typedef struct asyncKernel {
 
 // command queue of command nodes
 
-typedef struct kernel_arg_array {
+typedef struct kernel_arg_array
+{
   size_t size;
   unsigned int index;
 } karg_arr;
 
-typedef struct kernel_image_arg {
+typedef struct kernel_image_arg
+{
   size_t size;
   unsigned int index;
 } k_arg;
 
-typedef struct callParams {
+typedef struct callParams
+{
   dim3 gridDim;
   dim3 blockDim;
   size_t shareMem;
