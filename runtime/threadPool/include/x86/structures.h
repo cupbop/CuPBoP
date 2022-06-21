@@ -16,6 +16,7 @@ typedef struct c_thread {
   unsigned index;
   bool exit;
   bool busy;
+  int completeTask;
 } cu_ptd;
 
 // kernel information
