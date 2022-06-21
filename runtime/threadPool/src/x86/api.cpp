@@ -1,4 +1,5 @@
 #include "api.h"
+#include "blockingconcurrentqueue.h"
 #include "def.h"
 #include "macros.h"
 #include "structures.h"
@@ -6,7 +7,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <thread>
-#include "blockingconcurrentqueue.h"
 
 /*
 
@@ -17,8 +17,7 @@
 Initialize the device
 */
 int device_max_compute_units = 1;
-int init_device()
-{
+int init_device() {
   cu_device *device = (cu_device *)calloc(1, sizeof(cu_device));
   if (device == NULL)
     return C_ERROR_MEMALLOC;
@@ -39,8 +38,7 @@ int init_device()
 // Create Kernel
 static int kernelIds = 0;
 cu_kernel *create_kernel(const void *func, dim3 gridDim, dim3 blockDim,
-                         void **args, size_t sharedMem, cudaStream_t stream)
-{
+                         void **args, size_t sharedMem, cudaStream_t stream) {
   cu_kernel *ker = (cu_kernel *)calloc(1, sizeof(cu_kernel));
 
   // set the function pointer
@@ -77,54 +75,24 @@ __thread int block_index_z = 0;
 __thread int thread_memory_size = 0;
 __thread int *dynamic_shared_memory = NULL;
 __thread int warp_shfl[32] = {
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
 
 /*
     Enqueue Kernel (k) to the scheduler kernelQueue
 */
-int schedulerEnqueueKernel(cu_kernel *k)
-{
-  int totalBlocks = k->totalBlocks; // calculate gpu_block_to_execute_per_cpu_thread
+int schedulerEnqueueKernel(cu_kernel *k) {
+  int totalBlocks =
+      k->totalBlocks; // calculate gpu_block_to_execute_per_cpu_thread
   int gpuBlockToExecutePerCpuThread =
-      (totalBlocks + device_max_compute_units - 1) /
-      device_max_compute_units;
-  for (int startBlockIdx = 0; startBlockIdx < totalBlocks; startBlockIdx += gpuBlockToExecutePerCpuThread)
-  {
+      (totalBlocks + device_max_compute_units - 1) / device_max_compute_units;
+  for (int startBlockIdx = 0; startBlockIdx < totalBlocks;
+       startBlockIdx += gpuBlockToExecutePerCpuThread) {
     cu_kernel *p = new cu_kernel(*k);
     p->startBlockId = startBlockIdx;
-    p->endBlockId = std::min(startBlockIdx + gpuBlockToExecutePerCpuThread - 1, totalBlocks - 1);
+    p->endBlockId = std::min(startBlockIdx + gpuBlockToExecutePerCpuThread - 1,
+                             totalBlocks - 1);
     scheduler->kernelQueue->enqueue(p);
   }
 
@@ -136,18 +104,14 @@ int schedulerEnqueueKernel(cu_kernel *k)
 /*
   Kernel Launch with numBlocks and numThreadsPerBlock
 */
-int cuLaunchKernel(cu_kernel **k)
-{
+int cuLaunchKernel(cu_kernel **k) {
   // Calculate Block Size N/numBlocks
   cu_kernel *ker = *k;
   int status = C_RUN;
   // stream == 0 add to the kernelQueue
-  if (ker->stream == 0)
-  {
+  if (ker->stream == 0) {
     schedulerEnqueueKernel(ker);
-  }
-  else
-  {
+  } else {
     printf("MultiStream no implemente\n");
     exit(1);
   }
@@ -157,19 +121,17 @@ int cuLaunchKernel(cu_kernel **k)
 /*
     Thread Gets Work
 */
-int get_work(c_thread *th)
-{
+int get_work(c_thread *th) {
   int dynamic_shared_mem_size = 0;
   dim3 gridDim;
   dim3 blockDim;
-  while (true)
-  {
+  while (true) {
     // try to get a task from the queue
     cu_kernel *k;
     th->busy = false;
-    bool getTask = scheduler->kernelQueue->wait_dequeue_timed(k, std::chrono::milliseconds(5));
-    if (getTask)
-    {
+    bool getTask = scheduler->kernelQueue->wait_dequeue_timed(
+        k, std::chrono::milliseconds(5));
+    if (getTask) {
       th->busy = true;
       // set runtime configuration
       gridDim = k->gridDim;
@@ -185,8 +147,8 @@ int get_work(c_thread *th)
       if (dynamic_shared_mem_size > 0)
         dynamic_shared_memory = (int *)malloc(dynamic_shared_mem_size);
       // execute GPU blocks
-      for (block_index = k->startBlockId; block_index < k->endBlockId + 1; block_index++)
-      {
+      for (block_index = k->startBlockId; block_index < k->endBlockId + 1;
+           block_index++) {
         int tmp = block_index;
         block_index_x = tmp / (grid_size_y * grid_size_z);
         tmp = tmp % (grid_size_y * grid_size_z);
@@ -197,8 +159,7 @@ int get_work(c_thread *th)
       }
     }
     // if cannot get tasks, check whether programs stop
-    else if (scheduler->threadpool_shutdown_requested)
-    {
+    else if (scheduler->threadpool_shutdown_requested) {
       th->busy = false;
       return true; // thread exit
     }
@@ -206,8 +167,7 @@ int get_work(c_thread *th)
   return 0;
 }
 
-void *driver_thread(void *p)
-{
+void *driver_thread(void *p) {
   struct c_thread *td = (struct c_thread *)p;
   int is_exit = 0;
   td->exit = false;
@@ -216,14 +176,11 @@ void *driver_thread(void *p)
   is_exit = get_work(td);
 
   // exit the routine
-  if (is_exit)
-  {
+  if (is_exit) {
     td->exit = true;
     // pthread_exit
     pthread_exit(NULL);
-  }
-  else
-  {
+  } else {
     printf("driver thread stop incorrectly\n");
     exit(1);
   }
@@ -232,8 +189,7 @@ void *driver_thread(void *p)
 /*
 Initialize the scheduler
 */
-int scheduler_init(cu_device device)
-{
+int scheduler_init(cu_device device) {
   scheduler = (cu_pool *)calloc(1, sizeof(cu_pool));
   scheduler->num_worker_threads = device.max_compute_units;
   scheduler->num_kernel_queued = 0;
@@ -243,8 +199,7 @@ int scheduler_init(cu_device device)
   scheduler->kernelQueue = new kernel_queue;
 
   scheduler->idle_threads = 0;
-  for (int i = 0; i < scheduler->num_worker_threads; i++)
-  {
+  for (int i = 0; i < scheduler->num_worker_threads; i++) {
     scheduler->thread_pool[i].index = i;
     pthread_create(&scheduler->thread_pool[i].thread, NULL, driver_thread,
                    (void *)&scheduler->thread_pool[i]);
@@ -253,8 +208,7 @@ int scheduler_init(cu_device device)
   return C_SUCCESS;
 }
 
-void scheduler_uninit()
-{
+void scheduler_uninit() {
   printf("Scheduler Unitit no Implemente\n");
   exit(1);
 }
@@ -271,17 +225,17 @@ void scheduler_uninit()
   Sense Like Barrier
   Counting Barrier basically
 */
-void cuSynchronizeBarrier()
-{
-  while(1) {
-    // sync is complete, only if queue size == 0 and none of 
+void cuSynchronizeBarrier() {
+  while (1) {
+    // sync is complete, only if queue size == 0 and none of
     // driver threads are busy
-    if(scheduler->kernelQueue->size_approx() == 0) {
+    if (scheduler->kernelQueue->size_approx() == 0) {
       bool none_busy = true;
       for (int i = 0; i < scheduler->num_worker_threads; i++) {
-        none_busy&=(!scheduler->thread_pool[i].busy);
+        none_busy &= (!scheduler->thread_pool[i].busy);
       }
-      if(none_busy) break;
+      if (none_busy)
+        break;
     }
   }
 }

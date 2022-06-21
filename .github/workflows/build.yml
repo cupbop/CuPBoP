@@ -37,7 +37,7 @@ jobs:
         run: |
           cd ${{ github.workspace }}
           cd runtime/threadPool
-          git clone git@github.com:cameron314/concurrentqueue.git
+          git clone https://github.com/cameron314/concurrentqueue.git
       - name: Build project
         run: |
           mkdir build

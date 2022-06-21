@@ -1,18 +1,16 @@
 #ifndef C_STRUCTURES_H
 #define C_STRUCTURES_H
 
+#include "blockingconcurrentqueue.h"
 #include "cuda_runtime.h"
 #include "pthread.h"
-#include "blockingconcurrentqueue.h"
 
-typedef struct device
-{
+typedef struct device {
   int max_compute_units;
   int device_id;
 } cu_device;
 
-typedef struct c_thread
-{
+typedef struct c_thread {
   pthread_t thread;
   unsigned long executed_commands;
   unsigned index;
@@ -21,8 +19,7 @@ typedef struct c_thread
 } cu_ptd;
 
 // kernel information
-typedef struct kernel
-{
+typedef struct kernel {
 
   void *(*start_routine)(void *);
 
@@ -46,15 +43,16 @@ typedef struct kernel
   int startBlockId;
   int endBlockId;
 
-  kernel(const kernel &obj) : start_routine(obj.start_routine), args(obj.args),
-                              shared_mem(obj.shared_mem), blockSize(obj.blockSize),
-                              gridDim(obj.gridDim), blockDim(obj.blockDim), totalBlocks(obj.totalBlocks) {}
+  kernel(const kernel &obj)
+      : start_routine(obj.start_routine), args(obj.args),
+        shared_mem(obj.shared_mem), blockSize(obj.blockSize),
+        gridDim(obj.gridDim), blockDim(obj.blockDim),
+        totalBlocks(obj.totalBlocks) {}
 } cu_kernel;
 
 using kernel_queue = moodycamel::BlockingConcurrentQueue<kernel *>;
 
-typedef struct scheduler_pool
-{
+typedef struct scheduler_pool {
 
   struct c_thread *thread_pool;
 
@@ -77,8 +75,7 @@ typedef struct scheduler_pool
 
 } cu_pool;
 
-typedef struct command
-{
+typedef struct command {
 
   struct kernel *ker;
 
@@ -87,16 +84,14 @@ typedef struct command
 
 } cu_command;
 
-typedef struct argument
-{
+typedef struct argument {
   // size of the argument to allocation
   size_t size;
   void *value;
   unsigned int index;
 } cu_argument;
 
-typedef struct input_arg
-{
+typedef struct input_arg {
   // real values for the input
   char *p;
   struct argument *argus[];
@@ -105,16 +100,14 @@ typedef struct input_arg
   // so that we can parse the arguments p
 } cu_input;
 
-enum StreamType
-{
+enum StreamType {
   DEFAULT,
   LOW,
   HIGH,
   EXT,
 };
 
-struct cStreamDataInternal
-{
+struct cStreamDataInternal {
   /*
       status of the stream (run , wait)
       Run: Stream will asynchronously assign the kernel assign with this stream
@@ -129,8 +122,7 @@ struct cStreamDataInternal
   unsigned int count; // number of task left in the stream
 };
 
-typedef struct streamData
-{
+typedef struct streamData {
 
   // execution status of current event monitor
   struct cStreamDataInternal ev;
@@ -143,8 +135,7 @@ typedef struct streamData
 
 } cstreamData;
 
-typedef struct asyncKernel
-{
+typedef struct asyncKernel {
   unsigned int numBlocks;
   unsigned int numThreads;
   struct event *evt;
@@ -157,20 +148,17 @@ typedef struct asyncKernel
 
 // command queue of command nodes
 
-typedef struct kernel_arg_array
-{
+typedef struct kernel_arg_array {
   size_t size;
   unsigned int index;
 } karg_arr;
 
-typedef struct kernel_image_arg
-{
+typedef struct kernel_image_arg {
   size_t size;
   unsigned int index;
 } k_arg;
 
-typedef struct callParams
-{
+typedef struct callParams {
   dim3 gridDim;
   dim3 blockDim;
   size_t shareMem;
