@@ -17,6 +17,7 @@ typedef struct c_thread
   unsigned long executed_commands;
   unsigned index;
   bool exit;
+  bool busy;
 } cu_ptd;
 
 // kernel information

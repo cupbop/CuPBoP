@@ -24,7 +24,6 @@ int init_device()
     return C_ERROR_MEMALLOC;
 
   device->max_compute_units = std::thread::hardware_concurrency();
-  device->max_compute_units = 4;
   std::cout << device->max_compute_units
             << " concurrent threads are supported.\n";
   device_max_compute_units = device->max_compute_units;
@@ -129,8 +128,8 @@ int schedulerEnqueueKernel(cu_kernel *k)
     scheduler->kernelQueue->enqueue(p);
   }
 
-  printf("total: %d  execute per cpu: %d\n", totalBlocks,
-         gpuBlockToExecutePerCpuThread);
+  // printf("total: %d  execute per cpu: %d\n", totalBlocks,
+  //        gpuBlockToExecutePerCpuThread);
   return C_SUCCESS;
 }
 
@@ -139,12 +138,6 @@ int schedulerEnqueueKernel(cu_kernel *k)
 */
 int cuLaunchKernel(cu_kernel **k)
 {
-  if (!scheduler)
-  {
-    init_device();
-  }
-  std::cout << "launch\n"
-            << std::flush;
   // Calculate Block Size N/numBlocks
   cu_kernel *ker = *k;
   int status = C_RUN;
@@ -173,9 +166,11 @@ int get_work(c_thread *th)
   {
     // try to get a task from the queue
     cu_kernel *k;
+    th->busy = false;
     bool getTask = scheduler->kernelQueue->wait_dequeue_timed(k, std::chrono::milliseconds(5));
     if (getTask)
     {
+      th->busy = true;
       // set runtime configuration
       gridDim = k->gridDim;
       blockDim = k->blockDim;
@@ -190,7 +185,6 @@ int get_work(c_thread *th)
       if (dynamic_shared_mem_size > 0)
         dynamic_shared_memory = (int *)malloc(dynamic_shared_mem_size);
       // execute GPU blocks
-      printf("exec: from: %d to : %d\n",k->startBlockId, k->endBlockId);
       for (block_index = k->startBlockId; block_index < k->endBlockId + 1; block_index++)
       {
         int tmp = block_index;
@@ -201,11 +195,11 @@ int get_work(c_thread *th)
         block_index_z = tmp;
         k->start_routine(k->args);
       }
-      printf("done: from: %d to : %d\n",k->startBlockId, k->endBlockId);
     }
     // if cannot get tasks, check whether programs stop
     else if (scheduler->threadpool_shutdown_requested)
     {
+      th->busy = false;
       return true; // thread exit
     }
   }
@@ -217,17 +211,15 @@ void *driver_thread(void *p)
   struct c_thread *td = (struct c_thread *)p;
   int is_exit = 0;
   td->exit = false;
+  td->busy = false;
   // get work
-  printf("before getwork\n");
   is_exit = get_work(td);
-  printf("after getwork\n");
 
   // exit the routine
   if (is_exit)
   {
     td->exit = true;
     // pthread_exit
-    printf("pthread exit\n");
     pthread_exit(NULL);
   }
   else
@@ -263,7 +255,7 @@ int scheduler_init(cu_device device)
 
 void scheduler_uninit()
 {
-  printf("No Implemente\n");
+  printf("Scheduler Unitit no Implemente\n");
   exit(1);
 }
 
@@ -281,7 +273,15 @@ void scheduler_uninit()
 */
 void cuSynchronizeBarrier()
 {
-  while (scheduler->kernelQueue->size_approx() > 0)
-    ;
-  printf("size: %d\n",scheduler->kernelQueue->size_approx());
+  while(1) {
+    // sync is complete, only if queue size == 0 and none of 
+    // driver threads are busy
+    if(scheduler->kernelQueue->size_approx() == 0) {
+      bool none_busy = true;
+      for (int i = 0; i < scheduler->num_worker_threads; i++) {
+        none_busy&=(!scheduler->thread_pool[i].busy);
+      }
+      if(none_busy) break;
+    }
+  }
 }

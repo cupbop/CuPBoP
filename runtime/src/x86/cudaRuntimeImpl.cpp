@@ -118,17 +118,17 @@ static int stream_counter = 1;
 
 */
 cudaError_t cudaStreamCreate(cudaStream_t *pStream) {
-  printf("No Implement\n");
+  printf("cudaStreamCreate no Implement\n");
   exit(1);
 }
 
 cudaError_t cudaStreamDestroy(cudaStream_t stream) {
-  printf("No Implement\n");
+  printf("cudaStreamDestroy No Implement\n");
   exit(1);
 }
 
 cudaError_t cudaStreamSynchronize(cudaStream_t stream) {
-  printf("No Implement\n");
+  printf("cudaStreamSynchronize No Implement\n");
   exit(1);
 }
 
