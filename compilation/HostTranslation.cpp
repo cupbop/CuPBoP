@@ -2,6 +2,7 @@
 #include "ReplaceConstantMemory.h"
 #include "ReplaceCudaBuiltin.h"
 #include "ReplaceKernelArgs.h"
+#include "RemoveMetadata.h"
 #include "tool.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
@@ -26,6 +27,8 @@ int main(int argc, char **argv) {
   // load LLVM module(s)
   llvm::Module *hostModule = LoadModuleFromFilr(input_host_path);
   VerifyModule(hostModule);
+  // remove metadata
+  RemoveMetadata(hostModule);
   // replace const memory
   ReplaceConstantMemory(hostModule, fin);
   // process host module

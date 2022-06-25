@@ -173,6 +173,10 @@ void remove_metadata(llvm::Module *M) {
     }
     F->removeFnAttr("target-features");
     F->removeFnAttr("target-cpu");
+    F->removeFnAttr(llvm::Attribute::NoInline);
+    F->removeFnAttr("min-legal-vector-width");
+    F->removeFnAttr("no-trapping-math");
+    F->removeFnAttr(llvm::Attribute::OptimizeNone);
   }
 }
 
