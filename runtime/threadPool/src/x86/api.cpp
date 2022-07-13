@@ -17,7 +17,11 @@
 Initialize the device
 */
 int device_max_compute_units = 1;
+bool device_initilized = false;
 int init_device() {
+  if (device_initilized)
+    return 0;
+  device_initilized = true;
   cu_device *device = (cu_device *)calloc(1, sizeof(cu_device));
   if (device == NULL)
     return C_ERROR_MEMALLOC;
@@ -231,6 +235,9 @@ void scheduler_uninit() {
   Counting Barrier basically
 */
 void cuSynchronizeBarrier() {
+  if (!device_initilized) {
+    init_device();
+  }
   while (1) {
     // (TODO): currently, we assume each kernel launch will  have a
     // following sync

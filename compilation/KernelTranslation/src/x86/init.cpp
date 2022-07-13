@@ -360,6 +360,12 @@ void replace_cuda_math_built_in(llvm::Module *M) {
     if (func_name.find("_ZL3expd") != std::string::npos) {
       F->deleteBody();
     }
+    if (func_name.find("_ZL8copysigndd") != std::string::npos) {
+      F->deleteBody();
+    }
+    if (func_name.find("_ZL8copysigndd.8") != std::string::npos) {
+      F->deleteBody();
+    }
   }
 }
 
@@ -368,6 +374,8 @@ void init_block(llvm::Module *M, std::ofstream &fout) {
   llvm_preprocess(M);
   // remove useles Cuda function
   remove_cuda_built_in(M);
+  // replace CUDA math function, like expf
+  replace_cuda_math_built_in(M);
   // replace CUDA math function, like expf
   replace_cuda_math_built_in(M);
 

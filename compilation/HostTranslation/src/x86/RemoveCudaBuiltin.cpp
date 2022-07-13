@@ -9,20 +9,77 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Support/ToolOutputFile.h"
+#include "llvm/Transforms/Utils/CtorUtils.h"
 #include <iostream>
 #include <map>
 #include <set>
 
 using namespace llvm;
 
+/// Given a llvm.global_ctors list that we can understand,
+/// return a list of the functions and null terminator as a vector.
+static std::vector<Function *> parseGlobalCtors(GlobalVariable *GV) {
+  if (GV->getInitializer()->isNullValue())
+    return std::vector<Function *>();
+  ConstantArray *CA = cast<ConstantArray>(GV->getInitializer());
+  std::vector<Function *> Result;
+  Result.reserve(CA->getNumOperands());
+  for (auto &V : CA->operands()) {
+    ConstantStruct *CS = cast<ConstantStruct>(V);
+    Result.push_back(dyn_cast<Function>(CS->getOperand(1)));
+  }
+  return Result;
+}
+
 void RemoveCudaBuiltin(llvm::Module *M) {
 
   std::set<llvm::Function *> need_remove;
 
-  if (GlobalVariable *gv = M->getGlobalVariable("llvm.global_ctors")) {
-    gv->dropAllReferences();
-    gv->eraseFromParent();
+  // remove cuda built-in from Ctors
+  if (GlobalVariable *GV = M->getGlobalVariable("llvm.global_ctors")) {
+    std::vector<Function *> Ctors = parseGlobalCtors(GV);
+    if (!Ctors.empty()) {
+      ConstantArray *OldCA = cast<ConstantArray>(GV->getInitializer());
+      SmallVector<Constant *, 10> CAList;
+      for (int i = 0; i < OldCA->getNumOperands(); i++) {
+        if (!Ctors[i])
+          continue;
+        if (Ctors[i]->hasName() &&
+            Ctors[i]->getName().str().find("__cuda") == std::string::npos) {
+          std::cout << "keep: " << Ctors[i]->getName().str() << std::endl
+                    << std::flush;
+          CAList.push_back(OldCA->getOperand(i));
+        }
+      }
+
+      // Create the new array initializer.
+      ArrayType *ATy =
+          ArrayType::get(OldCA->getType()->getElementType(), CAList.size());
+      Constant *CA = ConstantArray::get(ATy, CAList);
+
+      // If we didn't change the number of elements, don't create a new GV.
+      if (CA->getType() == OldCA->getType()) {
+        GV->setInitializer(CA);
+      } else {
+        // Create the new global and insert it next to the existing list.
+        GlobalVariable *NGV = new GlobalVariable(
+            CA->getType(), GV->isConstant(), GV->getLinkage(), CA, "",
+            GV->getThreadLocalMode());
+        GV->getParent()->getGlobalList().insert(GV->getIterator(), NGV);
+        NGV->takeName(GV);
+
+        // Nuke the old list, replacing any uses with the new one.
+        if (!GV->use_empty()) {
+          Constant *V = NGV;
+          if (V->getType() != GV->getType())
+            V = ConstantExpr::getBitCast(V, GV->getType());
+          GV->replaceAllUsesWith(V);
+        }
+        GV->eraseFromParent();
+      }
+    }
   }
+
   Function *c_tor = NULL;
   if (c_tor = M->getFunction("__cuda_module_ctor")) {
     c_tor->dropAllReferences();

@@ -15,5 +15,9 @@ float __nv_fmodf(float x, float y) { return fmod(x, y); }
 int __nv_isnanf(float v) { return isnan(v); }
 int __nv_isinff(float v) { return isinf(v); }
 float __nv_fabsf(float v) { return abs(v); }
+double __nv_fabsd(double v) { return abs(v); }
+double __nv_fmind(double a, double b) { return (a < b) ? a : b; }
+double __nv_fmaxd(double a, double b) { return (a > b) ? a : b; }
 int __nvvm_mul24_i(int a, int b) { return a * b; }
 double _ZL3expd(double base) { return exp(base); }
+double _ZL8copysigndd(double x, double y) { return y > 0 ? abs(x) : -abs(x); };

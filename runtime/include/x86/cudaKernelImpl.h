@@ -19,7 +19,11 @@ float __nv_fmodf(float, float);
 int __nv_isnanf(float);
 int __nv_isinff(float);
 float __nv_fabsf(float);
+double __nv_fabsd(double);
+double __nv_fmind(double, double);
+double __nv_fmaxd(double, double);
 int __nvvm_mul24_i(int, int);
 double _ZL3expd(double);
+double _ZL8copysigndd(double, double);
 }
 #endif

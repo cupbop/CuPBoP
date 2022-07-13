@@ -464,10 +464,12 @@ void replace_built_in_function(llvm::Module *M) {
                   std::vector<Value *> Indices;
                   Indices.push_back(ConstantInt::get(I32, 0));
                   Indices.push_back(ConstantInt::get(I32, i));
-                  auto new_GEP = GetElementPtrInst::Create(NULL, // Pointee type
-                                                           src_alloc, // Alloca
-                                                           Indices,   // Indices
-                                                           "", Call);
+                  auto new_GEP = GetElementPtrInst::Create(
+                      cast<PointerType>(src_alloc->getType()->getScalarType())
+                          ->getElementType(),
+                      src_alloc, // Alloca
+                      Indices,   // Indices
+                      "", Call);
                   auto new_load =
                       new LoadInst(new_GEP->getType()->getPointerElementType(),
                                    new_GEP, "", Call);
@@ -503,8 +505,14 @@ void replace_built_in_function(llvm::Module *M) {
               Call->getCalledFunction()->setName("__nvvm_lohi_i2d");
             } else if (func_name == "llvm.nvvm.fabs.f") {
               Call->getCalledFunction()->setName("__nvvm_fabs_f");
+            } else if (func_name == "llvm.nvvm.fabs.d") {
+              Call->getCalledFunction()->setName("__nv_fabsd");
             } else if (func_name == "llvm.nvvm.mul24.i") {
               Call->getCalledFunction()->setName("__nvvm_mul24_i");
+            } else if (func_name == "llvm.nvvm.fmin.d") {
+              Call->getCalledFunction()->setName("__nv_fmind");
+            } else if (func_name == "llvm.nvvm.fmax.d") {
+              Call->getCalledFunction()->setName("__nv_fmaxd");
             }
           }
         }
