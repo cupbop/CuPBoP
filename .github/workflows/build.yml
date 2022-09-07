@@ -33,6 +33,10 @@ jobs:
           cd ${{ github.workspace }}
           wget https://www.dropbox.com/s/4pckqsjnl920gpn/cuda-10.1.tar.gz?dl=1
           tar -xzf 'cuda-10.1.tar.gz?dl=1'
+      - name: Download external files
+        run: |
+          git submodule init
+          git submodule update
       - name: Build project
         run: |
           mkdir build
@@ -42,7 +46,7 @@ jobs:
       - name: clone SC evaluation code
         run: |
           cd ${{ github.workspace }}
-          git clone --recursive https://github.com/drcut/SC_evaluate
+          git clone https://github.com/drcut/SC_evaluate
       - name: Download data used to verify
         run: |
           cd ${{ github.workspace }}/SC_evaluate/Hetero-cox
