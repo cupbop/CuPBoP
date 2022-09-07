@@ -5,17 +5,14 @@
 CuPBoP is a framework which support executing unmodified CUDA source code
 on non-NVIDIA devices.
 Currently, CuPBoP support serveral CPU backends, including x86, AArch64, and RISC-V.
+Supporting [Vortex](https://vortex.cc.gatech.edu/) backend is working in progress.
 
 ## Install
 
 ### Prerequisites
 
-- Linux: Verified on Ubuntu 18.04
-- LLVM14.0
-- NVIDIA CUDA-toolkit
-- x86 CPU
-- pthread
-- GCC 7.5.0
+- Linux
+- [LLVM 14.0.1](https://github.com/llvm/llvm-project/releases/tag/llvmorg-14.0.1)
 
 ### Installation
 
@@ -87,3 +84,24 @@ cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc \\
 
 Any kinds of contributions are welcome.
 Please refer to [Contribution.md](./CONTRIBUTING.md) for more detail.
+
+## Related publications
+
+- "COX: Exposing CUDA Warp-Level Functions to CPUs"
+ACM Transactions on Architecture and Code Optimization
+[link](https://dl.acm.org/doi/abs/10.1145/3554736)
+- "CuPBoP: CUDA for Parallelized and Broad-range Processors"
+arxiv preprint
+[link](https://arxiv.org/abs/2206.07896)
+
+## Contributors
+
+- [Ruobing Han](https://drcut.github.io/)
+- Jun Chen
+- Bhanu Garg
+- Xule Zhou
+- John Lu
+- [Chihyo Ahn](https://upcp.ece.gatech.edu/2021/09/01/chihyo-ahn/)
+- Haotian Sheng
+- Blaise Tine
+- [Hyesoon Kim](https://faculty.cc.gatech.edu/~hyesoon/)
