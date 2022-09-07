@@ -19,7 +19,7 @@ Supporting [Vortex](https://vortex.cc.gatech.edu/) backend is working in progres
 1. Clone from github
 
    ```bash
-   git clone https://github.com/drcut/CuPBoP
+   git clone --recursive https://github.com/drcut/CuPBoP
    cd CuPBoP
    export CuPBoP_PATH=`pwd`
    export LD_LIBRARY_PATH=$CuPBoP_PATH/build/runtime:$CuPBoP_PATH/build/runtime/threadPool:$LD_LIBRARY_PATH
