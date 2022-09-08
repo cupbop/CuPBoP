@@ -47,5 +47,42 @@ void performance_optimization(llvm::Module *M) {
       }
     }
   }
-  return;
+  llvm::legacy::PassManager Passes;
+
+  // add target machine info
+  llvm::Triple triple("x86_64-unknown-linux-gnu");
+
+  std::string Error;
+  const Target *TheTarget = TargetRegistry::lookupTarget("", triple, Error);
+  if (!TheTarget) {
+    printf("Error: %s\n", Error.c_str());
+    assert(0);
+  }
+  llvm::TargetOptions Options;
+  Options.FloatABIType = FloatABI::Hard;
+
+  TargetMachine *TM = TheTarget->createTargetMachine(
+      triple.getTriple(), llvm::sys::getHostCPUName().str(), StringRef("+m,+f"),
+      Options, Reloc::PIC_, CodeModel::Small, CodeGenOpt::Aggressive);
+  assert(TM && "No Machine Information\n");
+
+  Passes.add(createTargetTransformInfoWrapperPass(TM->getTargetIRAnalysis()));
+
+  TargetLibraryInfoImpl TLII(triple);
+  TLII.disableAllFunctions();
+  Passes.add(new TargetLibraryInfoWrapperPass(TLII));
+
+  // Add O3 optimization
+  llvm::PassManagerBuilder Builder;
+  Builder.OptLevel = 3;
+  Builder.SizeLevel = 0;
+
+  Builder.LoopVectorize = true;
+  Builder.SLPVectorize = true;
+
+  Builder.VerifyInput = true;
+  Builder.VerifyOutput = true;
+
+  Builder.populateModulePassManager(Passes);
+  Passes.run(*M);
 }

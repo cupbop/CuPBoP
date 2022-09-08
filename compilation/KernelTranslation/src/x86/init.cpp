@@ -104,6 +104,10 @@ bool inline_func_with_tid(llvm::Module *M) {
     InlineFunctionInfo IFI;
     InlineFunction(*c, IFI);
   }
+  for (auto f : need_remove) {
+    f->dropAllReferences();
+    f->eraseFromParent();
+  }
   return changed;
 }
 
