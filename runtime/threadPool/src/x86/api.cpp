@@ -9,11 +9,6 @@
 #include <thread>
 
 /*
-
-
-*/
-
-/*
 Initialize the device
 */
 int device_max_compute_units = 1;
@@ -112,6 +107,9 @@ int schedulerEnqueueKernel(cu_kernel *k) {
   Kernel Launch with numBlocks and numThreadsPerBlock
 */
 int cuLaunchKernel(cu_kernel **k) {
+  if (!device_initilized) {
+    init_device();
+  }
   // Calculate Block Size N/numBlocks
   cu_kernel *ker = *k;
   int status = C_RUN;
@@ -239,7 +237,7 @@ void cuSynchronizeBarrier() {
     init_device();
   }
   while (1) {
-    // (TODO): currently, we assume each kernel launch will  have a
+    // (TODO): currently, we assume each kernel launch has a
     // following sync
     if (scheduler->kernelQueue->size_approx() == 0) {
       int completeBlock = 0;
