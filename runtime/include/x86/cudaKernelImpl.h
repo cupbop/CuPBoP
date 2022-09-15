@@ -1,6 +1,5 @@
 #ifndef __RUNTIME_IMPL__
 #define __KERNEL_IMPL__
-#include "cudaStatus.h"
 #include "structures.h"
 #include <stdint.h>
 extern "C" {

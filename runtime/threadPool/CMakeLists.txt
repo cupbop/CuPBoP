@@ -11,6 +11,7 @@ set(LIB_NAME threadPool)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_BUILD_TYPE Debug)
+include_directories(../../common)
 include_directories(./include)
 include_directories(./include/x86)
 include_directories(../../external/moodycamel)

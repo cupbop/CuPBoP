@@ -1,6 +1,7 @@
 #include "cudaRuntimeImpl.h"
 #include "api.h"
 #include "cuda_runtime.h"
+#include "debug.hpp"
 #include "def.h"
 #include "macros.h"
 #include "structures.h"
@@ -38,11 +39,10 @@ cudaError_t cudaFreeHost(void *devPtr) {
 cudaError_t cudaLaunchKernel(const void *func, dim3 gridDim, dim3 blockDim,
                              void **args, size_t sharedMem,
                              cudaStream_t stream) {
-  // if scheduler is null init device
-  // printf(
-  //     "cudaLaunchKernel : Grid: x:%d y:%d z:%d Block: %d, %d, %d ShMem:%lu\n
-  //     ", gridDim.x, gridDim.y, gridDim.z, blockDim.x, blockDim.y, blockDim.z,
-  //     sharedMem);
+  DEBUG_INFO(
+      "cudaLaunchKernel : Grid: x:%d y:%d z:%d Block: %d, %d, %d ShMem: %d\n",
+      gridDim.x, gridDim.y, gridDim.z, blockDim.x, blockDim.y, blockDim.z,
+      sharedMem);
 
   cu_kernel *ker =
       create_kernel(func, gridDim, blockDim, args, sharedMem, stream);
@@ -66,16 +66,12 @@ cudaError_t cudaMemcpy(void *dst, const void *src, size_t count,
   if (kind == cudaMemcpyHostToHost) {
     memcpy(dst, src, count);
   } else if (kind == cudaMemcpyDeviceToHost) {
-    // how does the code know which device accessing the memory
     memcpy(dst, src, count);
   } else if (kind == cudaMemcpyHostToDevice) {
-    // how does the code know which device accessing the memory
     memcpy(dst, src, count);
   } else if (kind == cudaMemcpyDeviceToHost) {
-    // how does the code know which device accessing the memory
     memcpy(dst, src, count);
   } else if (kind == cudaMemcpyDeviceToDevice) {
-
     memcpy(dst, dst, count);
   } else if (kind == cudaMemcpyDefault) {
     memcpy(dst, src, count);
@@ -100,36 +96,31 @@ cudaError_t cudaStreamCopyAttributes(cudaStream_t dst, cudaStream_t src) {
   cstreamData *src_stream = (cstreamData *)src;
 
   if (dst_stream == NULL || src_stream == NULL) {
-    return cudaErrorInvalidValue; // 1
+    return cudaErrorInvalidValue;
   }
 
   dst_stream->stream_priority = src_stream->stream_priority;
   dst_stream->stream_flags = src_stream->stream_flags;
 
-  return cudaSuccess; // 0
+  return cudaSuccess;
 }
 
 static int stream_counter = 1;
 /*
   cudaStream_t is a Opaque Structure
-
   Overwrites cudaStream_t into custom cstreamData structure
   (does hardware uses the cudaStream_t stream)
-
 */
 cudaError_t cudaStreamCreate(cudaStream_t *pStream) {
-  printf("cudaStreamCreate no Implement\n");
-  exit(1);
+  assert(0 && "cudaStreamCreate no Implement\n");
 }
 
 cudaError_t cudaStreamDestroy(cudaStream_t stream) {
-  printf("cudaStreamDestroy No Implement\n");
-  exit(1);
+  assert(0 && "cudaStreamDestroy No Implement\n");
 }
 
 cudaError_t cudaStreamSynchronize(cudaStream_t stream) {
-  printf("cudaStreamSynchronize No Implement\n");
-  exit(1);
+  assert(0 && "cudaStreamSynchronize No Implement\n");
 }
 
 cudaError_t cudaGetDeviceCount(int *count) {
@@ -139,7 +130,6 @@ cudaError_t cudaGetDeviceCount(int *count) {
 }
 
 cudaError_t cudaGetDeviceProperties(cudaDeviceProp *deviceProp, int device) {
-
   // dummy values
   if (device == 0) {
     strcpy(deviceProp->name, "pthread");
@@ -188,53 +178,31 @@ extern cudaError_t CUDARTAPI __cudaPopCallConfiguration(dim3 *gridDim,
                                                         dim3 *blockDim,
                                                         size_t *sharedMem,
                                                         void **stream) {
-  //  printf("__cudaPopCallConfiguration: Grid: x:%d y:%d z:%d Block: %d, %d, %d
-  //  ShMem: %lu\n",
-  // gridDim->x, gridDim->y, gridDim->z, blockDim->x, blockDim->y, blockDim->z,
-  // *sharedMem);
+  DEBUG_INFO("__cudaPopCallConfiguration: Grid: x:%d y:%d z:%d Block: %d, %d, "
+             "%d ShMem: %lu\n",
+             gridDim->x, gridDim->y, gridDim->z, blockDim->x, blockDim->y,
+             blockDim->z, *sharedMem);
 
   *gridDim = callParamTemp.gridDim;
   *blockDim = callParamTemp.blockDim;
   *sharedMem = callParamTemp.shareMem;
   *stream = callParamTemp.stream;
 
-  // printf("__cudaPopCallConfiguration After : Grid: x:%d y:%d z:%d Block: %d,
-  // %d, %d ShMem: %lu\n", gridDim->x, gridDim->y, gridDim->z, blockDim->x,
-  // blockDim->y, blockDim->z, *sharedMem);
-
-  // exit(1);
-
   return cudaSuccess;
 }
 
 extern __host__ __device__ unsigned CUDARTAPI __cudaPushCallConfiguration(
     dim3 gridDim, dim3 blockDim, size_t sharedMem = 0, void *stream = 0) {
-
-  // printf("__cudaPushCallConfiguration Grid: x:%d y:%d z:%d Block: %d, %d, %d
-  // "
-  //        "ShMem: %lu\n ",
-  //        gridDim.x, gridDim.y, gridDim.z, blockDim.x, blockDim.y, blockDim.z,
-  //        sharedMem);
+  DEBUG_INFO("__cudaPushCallConfiguration: Grid: x:%d y:%d z:%d Block: %d, %d, "
+             "%d ShMem: %lu\n",
+             gridDim.x, gridDim.y, gridDim.z, blockDim.x, blockDim.y,
+             blockDim.z, sharedMem);
 
   // memory checks allocations
   callParamTemp.gridDim = gridDim;
-
-  // std::cout << "assign gridDim" << std::endl;
-
   callParamTemp.blockDim = blockDim;
-  //  std::cout << "assign blockDim" << std::endl;
   callParamTemp.shareMem = sharedMem;
-  //  std::cout << "assign shareMem" << std::endl;
   (callParamTemp.stream) = stream;
-
-  //  printf("__cudaPushCallConfiguration After Grid: x:%d y:%d z:%d Block: %d,
-  //  %d, %d ShMem: %lu\n",
-  //   gridDim.x, gridDim.y, gridDim.z, blockDim.x, blockDim.y, blockDim.z,
-  //   sharedMem);
-
-  // return 0 continues the Pop
   return cudaSuccess;
-
-  // return ne 0 skips the Pop
 }
 }

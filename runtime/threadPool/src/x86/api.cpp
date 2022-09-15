@@ -1,5 +1,6 @@
 #include "api.h"
 #include "blockingconcurrentqueue.h"
+#include "debug.hpp"
 #include "def.h"
 #include "macros.h"
 #include "structures.h"
@@ -22,8 +23,8 @@ int init_device() {
     return C_ERROR_MEMALLOC;
 
   device->max_compute_units = std::thread::hardware_concurrency();
-  std::cout << device->max_compute_units
-            << " concurrent threads are supported.\n";
+  DEBUG_INFO("%d concurrent threads are supported.\n",
+             device->max_compute_units);
   device_max_compute_units = device->max_compute_units;
 
   // initialize scheduler
@@ -46,13 +47,9 @@ cu_kernel *create_kernel(const void *func, dim3 gridDim, dim3 blockDim,
 
   ker->gridDim = gridDim;
   ker->blockDim = blockDim;
-
   ker->shared_mem = sharedMem;
-
   ker->stream = stream;
-
   ker->totalBlocks = gridDim.x * gridDim.y * gridDim.z;
-
   ker->blockSize = blockDim.x * blockDim.y * blockDim.z;
   return ker;
 }
@@ -97,9 +94,6 @@ int schedulerEnqueueKernel(cu_kernel *k) {
     scheduler->kernelQueue->enqueue(p);
     TaskToExecute++;
   }
-
-  // printf("total: %d  execute per cpu: %d\n", totalBlocks,
-  //        gpuBlockToExecutePerCpuThread);
   return C_SUCCESS;
 }
 
@@ -121,8 +115,7 @@ int cuLaunchKernel(cu_kernel **k) {
     }
     schedulerEnqueueKernel(ker);
   } else {
-    printf("MultiStream no implemente\n");
-    exit(1);
+    assert(0 && "MultiStream no implemente\n");
   }
   return 0;
 }
@@ -185,11 +178,9 @@ void *driver_thread(void *p) {
   // exit the routine
   if (is_exit) {
     td->exit = true;
-    // pthread_exit
     pthread_exit(NULL);
   } else {
-    printf("driver thread stop incorrectly\n");
-    exit(1);
+    assert(0 && "driver thread stop incorrectly\n");
   }
 }
 
@@ -215,29 +206,17 @@ int scheduler_init(cu_device device) {
   return C_SUCCESS;
 }
 
-void scheduler_uninit() {
-  printf("Scheduler Unitit no Implemente\n");
-  exit(1);
-}
+void scheduler_uninit() { assert(0 && "Scheduler Unitit no Implemente\n"); }
 
 /*
   Barrier for Kernel Launch
-
-  During kernel launch, increment the number of work items required to finish
-  Each kernel will point to the same event
-
-  During Running Command, decrement the event.work_item count
-  when count is 0, all work items for this kernel launch is finish
-
-  Sense Like Barrier
-  Counting Barrier basically
 */
 void cuSynchronizeBarrier() {
   if (!device_initilized) {
     init_device();
   }
   while (1) {
-    // (TODO): currently, we assume each kernel launch has a
+    // after compilation transformation, each kernel launch has a
     // following sync
     if (scheduler->kernelQueue->size_approx() == 0) {
       int completeBlock = 0;

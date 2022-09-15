@@ -10,6 +10,7 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 add_subdirectory(threadPool)
 
 # compile x86 runtime library
+include_directories(../common)
 include_directories(./include/)
 include_directories(./include/x86)
 include_directories(./threadPool/include/)
