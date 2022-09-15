@@ -164,7 +164,8 @@ void ReplaceKernelLaunch(llvm::Module *M) {
                 FunctionType *ft = calledFunction->getFunctionType();
                 DEBUG_INFO("Parent (Caller) Function Name: %s, "
                            "cudaLaunchKernel Function: %s, args : %d\n",
-                           func_name, functionOperand->getName().str().c_str(),
+                           func_name.c_str(),
+                           functionOperand->getName().str().c_str(),
                            functionOperand->arg_size());
                 auto rep = kernels.find(functionOperand->getName().str());
                 if (rep != kernels.end()) {
