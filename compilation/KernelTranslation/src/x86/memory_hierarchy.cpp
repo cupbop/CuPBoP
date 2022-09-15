@@ -1,4 +1,5 @@
 #include "memory_hierarchy.h"
+#include "debug.hpp"
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/GlobalValue.h"

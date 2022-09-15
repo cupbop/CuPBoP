@@ -1,4 +1,5 @@
 #include "init.h"
+#include "debug.hpp"
 #include "memory_hierarchy.h"
 #include "tool.h"
 #include <fstream>

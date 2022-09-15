@@ -2,6 +2,7 @@
  * Remove Clang cuda builtin functions and variables
  */
 #include "RemoveCudaBuiltin.h"
+#include "debug.hpp"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/IRBuilder.h"
@@ -46,8 +47,7 @@ void RemoveCudaBuiltin(llvm::Module *M) {
           continue;
         if (Ctors[i]->hasName() &&
             Ctors[i]->getName().str().find("__cuda") == std::string::npos) {
-          std::cout << "keep: " << Ctors[i]->getName().str() << std::endl
-                    << std::flush;
+          DEBUG_INFO("keep: %s\n", Ctors[i]->getName().str().c_str());
           CAList.push_back(OldCA->getOperand(i));
         }
       }

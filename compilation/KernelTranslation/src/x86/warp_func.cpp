@@ -1,5 +1,6 @@
 
 #include "warp_func.h"
+#include "debug.hpp"
 #include "tool.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/GlobalValue.h"

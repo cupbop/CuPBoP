@@ -1,5 +1,6 @@
 #include "insert_sync.h"
 #include "assert.h"
+#include "debug.hpp"
 #include "handle_sync.h"
 #include "tool.h"
 #include "llvm/ADT/SmallVector.h"

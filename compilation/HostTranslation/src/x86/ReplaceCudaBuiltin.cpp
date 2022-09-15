@@ -1,4 +1,5 @@
 #include "ReplaceCudaBuiltin.h"
+#include "debug.hpp"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/IRBuilder.h"
@@ -123,8 +124,8 @@ void ReplaceKernelLaunch(llvm::Module *M) {
 
                 cuda_register_kernel_names.insert(
                     functionOperand->getName().str());
-                std::cout << "Cuda Register Global Kernel: "
-                          << functionOperand->getName().str() << std::endl;
+                DEBUG_INFO("Cuda Register Global Kernel: %s\n",
+                           functionOperand->getName().str().c_str());
               }
             }
           }
@@ -161,10 +162,10 @@ void ReplaceKernelLaunch(llvm::Module *M) {
                     dyn_cast<Function>(callOperand->stripPointerCasts());
 
                 FunctionType *ft = calledFunction->getFunctionType();
-                std::cout << " Parent (Caller) Function Name: " << func_name
-                          << ", cudaLaunchKernel Function: "
-                          << functionOperand->getName().str() << ", args "
-                          << functionOperand->arg_size() << std::endl;
+                DEBUG_INFO("Parent (Caller) Function Name: %s, "
+                           "cudaLaunchKernel Function: %s, args : %d\n",
+                           func_name, functionOperand->getName().str().c_str(),
+                           functionOperand->arg_size());
                 auto rep = kernels.find(functionOperand->getName().str());
                 if (rep != kernels.end()) {
                   Function *FC = rep->second;
@@ -205,8 +206,7 @@ void ReplaceKernelLaunch(llvm::Module *M) {
                   newName = newName.substr(i);
                   break;
                 }
-
-                std::cout << "Change Kernel Name to: " << newName << std::endl;
+                DEBUG_INFO("Change Kernel Name to: %s\n", newName.c_str());
 
                 Function *F =
                     Function::Create(FT, Function::ExternalLinkage, newName, M);
@@ -225,9 +225,8 @@ void ReplaceKernelLaunch(llvm::Module *M) {
               // for both cudaKernelLaunch calls and regular function call
               host_changed = true;
               calledFunction->setName(calledFunction->getName() + "_host");
-              std::cout << std::endl;
-              std::cout << "Change Host Function Name To: "
-                        << calledFunction->getName().str() << std::endl;
+              DEBUG_INFO("Change Host Function Name to: %s\n",
+                         calledFunction->getName().str().c_str());
             }
           }
         }

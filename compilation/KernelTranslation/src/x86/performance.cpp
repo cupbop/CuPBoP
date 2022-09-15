@@ -1,4 +1,5 @@
 #include "performance.h"
+#include "debug.hpp"
 #include "tool.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/ADT/StringRef.h"

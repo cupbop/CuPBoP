@@ -1,4 +1,5 @@
 #include "tool.h"
+#include "debug.hpp"
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/Constants.h"

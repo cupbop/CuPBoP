@@ -1,4 +1,5 @@
 #include "generate_x86_format.h"
+#include "debug.hpp"
 #include "tool.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/TargetTransformInfo.h"

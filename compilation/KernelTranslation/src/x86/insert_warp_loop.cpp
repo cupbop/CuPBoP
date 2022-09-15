@@ -1,5 +1,6 @@
 
 #include "insert_warp_loop.h"
+#include "debug.hpp"
 #include "handle_sync.h"
 #include "tool.h"
 #include <assert.h>
