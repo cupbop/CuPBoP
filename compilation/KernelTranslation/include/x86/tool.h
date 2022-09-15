@@ -4,6 +4,13 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Module.h"
+
+#ifdef DEBUG
+#define DEBUG_INFO(...) fprintf(stderr, __VA_ARGS__)
+#else
+#define DEBUG_INFO(...)
+#endif // DEBUG
+
 llvm::Module *LoadModuleFromFilr(char *file_name);
 void DumpModule(llvm::Module *M, char *file_name);
 bool isKernelFunction(llvm::Module *M, llvm::Function *F);

@@ -1,4 +1,5 @@
 #include "performance.h"
+#include "tool.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/Triple.h"
@@ -40,6 +41,7 @@
 using namespace llvm;
 
 void performance_optimization(llvm::Module *M) {
+  DEBUG_INFO("performance optimization\n");
   for (auto F = M->begin(); F != M->end(); F++) {
     for (auto I = F->arg_begin(); I != F->arg_end(); ++I) {
       if (I->getType()->isPointerTy()) {
@@ -54,10 +56,7 @@ void performance_optimization(llvm::Module *M) {
 
   std::string Error;
   const Target *TheTarget = TargetRegistry::lookupTarget("", triple, Error);
-  if (!TheTarget) {
-    printf("Error: %s\n", Error.c_str());
-    assert(0);
-  }
+  assert(TheTarget && "No Target Information\n");
   llvm::TargetOptions Options;
   Options.FloatABIType = FloatABI::Hard;
 

@@ -111,11 +111,8 @@ void decode_input(llvm::Module *M) {
 
       auto PT = dyn_cast<PointerType>(share_memory->getType());
       auto element_type = PT->getElementType();
-      // std::cout << element_type->getTypeID()  << " Got global memor $$$$$$"
-      // << share_memory->getName().str() << std::endl;
 
       AllocaInst *new_arr = Builder.CreateAlloca(Int8T, loadedValue, "new_arr");
-      // new_arr->setAlignment(llvm::MaybeAlign(16));
       Value *new_ar = new_arr;
       Value *gptr = Builder.CreateBitOrPointerCast(
           share_memory, PointerType::get(PointerType::get(Int8T, 0), 0));
@@ -176,6 +173,7 @@ void remove_useless_var(llvm::Module *M) {
 }
 
 void generate_x86_format(llvm::Module *M) {
+  DEBUG_INFO("generate x86 format\n");
   // change metadata
   set_meta_data(M);
   // decode argument

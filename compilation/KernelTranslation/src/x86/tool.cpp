@@ -46,7 +46,6 @@ void VerifyModule(llvm::Module *program) {
 }
 
 void DumpModule(llvm::Module *M, char *file_name) {
-  // modify the program, add a wrapper
   std::string msg;
   llvm::raw_string_ostream os(msg);
   std::error_code EC;
@@ -541,8 +540,7 @@ void replace_asm_call(llvm::Module *M) {
           if (Call->isInlineAsm()) {
             auto asm_inst = dyn_cast<InlineAsm>(Call->getCalledOperand());
             if (asm_inst->getAsmString() != "mov.u32 $0, %laneid;") {
-              printf("unknown InlineAsm\n");
-              exit(1);
+              assert(0 && "unknown InlineAsm\n");
             }
             // return the rank within the warp
             IRBuilder<> builder(context);

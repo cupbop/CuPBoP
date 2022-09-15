@@ -245,17 +245,14 @@ public:
             PDT->getPostDomTree().dominates(merge_point, curr)) {
           // we should insert barrier at the beginning and
           // end of its predecessor
-          printf("insert [255]: %s\n", curr->getName().str().c_str());
           if (has_warp_barrier(b)) {
             CreateIntraWarpBarrier(&(*curr->begin()));
             for (BasicBlock *Pred : predecessors(curr)) {
-              printf("insert [262]: %s\n", Pred->getName().str().c_str());
               CreateIntraWarpBarrier(&(*Pred->getTerminator()));
             }
           } else {
             CreateInterWarpBarrier(&(*curr->begin()));
             for (BasicBlock *Pred : predecessors(curr)) {
-              printf("insert [268]: %s\n", Pred->getName().str().c_str());
               CreateInterWarpBarrier(&(*Pred->getTerminator()));
             }
           }
@@ -342,8 +339,8 @@ public:
       BasicBlock *merge_point = find_merge_point(head, PDT->getPostDomTree());
       assert(PDT->getPostDomTree().dominates(merge_point, head));
       if (!find_barrier_in_region(head, merge_point)) {
-        printf("do not need to handle tri-income if: %s\n",
-               merge_point->getName().str().c_str());
+        DEBUG_INFO("do not need to handle tri-income if: %s\n",
+                   merge_point->getName().str().c_str());
         continue;
       }
 
@@ -465,7 +462,7 @@ public:
       }
     } else {
       // handle break in for-loop
-      printf("loop has multiply exists\n");
+      DEBUG_INFO("loop has multiply exists\n");
       // this time, we have also insert sync before the for-body
       auto header_block = L->getHeader();
       assert(header_block->getTerminator()->getNumSuccessors() == 2 &&
@@ -524,7 +521,12 @@ static RegisterPass<InsertBuiltInBarrier>
                             "Insert built in barriers");
 } // namespace
 
+/*
+This function inserts implicit synchronization for conditional statements,
+please refer to https://dl.acm.org/doi/abs/10.1145/3554736 for detail
+*/
 void insert_sync(llvm::Module *M) {
+  DEBUG_INFO("insert sync\n");
   auto Registry = PassRegistry::getPassRegistry();
 
   llvm::legacy::PassManager Passes;

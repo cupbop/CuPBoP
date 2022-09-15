@@ -51,6 +51,7 @@ void split_block_by_sync(llvm::Function *F) {
 }
 
 void split_block_by_sync(llvm::Module *M) {
+  DEBUG_INFO("split block by sync\n");
   for (Module::iterator i = M->begin(), e = M->end(); i != e; ++i) {
     Function *F = &(*i);
     if (isKernelFunction(M, F))

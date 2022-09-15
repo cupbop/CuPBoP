@@ -72,10 +72,6 @@ int need_nested_loop;
 bool ShouldNotBeContextSaved(llvm::Instruction *instr) {
   if (isa<BranchInst>(instr))
     return true;
-  // if (isa<AddrSpaceCastInst>(instr))
-  //   return true;
-  // if (isa<CastInst>(instr))
-  //   return true;
 
   llvm::Module *M = instr->getParent()->getParent()->getParent();
   llvm::LoadInst *load = dyn_cast<llvm::LoadInst>(instr);
@@ -134,47 +130,6 @@ llvm::Instruction *GetContextArray(llvm::Instruction *instruction,
 
   Type *AllocType = elementType;
   AllocaInst *InstCast = dyn_cast<AllocaInst>(instruction);
-  /*
-  if (InstCast) {
-    unsigned Alignment = InstCast->getAlignment();
-
-    uint64_t StoreSize = Layout.getTypeStoreSize(InstCast->getAllocatedType());
-
-    if ((Alignment > 1) && (StoreSize & (Alignment - 1))) {
-      uint64_t AlignedSize = (StoreSize & (~(Alignment - 1))) + Alignment;
-      assert(AlignedSize > StoreSize);
-      uint64_t RequiredExtraBytes = AlignedSize - StoreSize;
-
-      if (isa<ArrayType>(elementType)) {
-
-        ArrayType *StructPadding = ArrayType::get(
-            Type::getInt8Ty(M->getContext()), RequiredExtraBytes);
-
-        std::vector<Type *> PaddedStructElements;
-        PaddedStructElements.push_back(elementType);
-        PaddedStructElements.push_back(StructPadding);
-        const ArrayRef<Type *> NewStructElements(PaddedStructElements);
-        AllocType = StructType::get(M->getContext(), NewStructElements, true);
-        uint64_t NewStoreSize = Layout.getTypeStoreSize(AllocType);
-        assert(NewStoreSize == AlignedSize);
-      } else if (isa<StructType>(elementType)) {
-        StructType *OldStruct = dyn_cast<StructType>(elementType);
-
-        ArrayType *StructPadding = ArrayType::get(
-            Type::getInt8Ty(M->getContext()), RequiredExtraBytes);
-        std::vector<Type *> PaddedStructElements;
-        for (unsigned j = 0; j < OldStruct->getNumElements(); j++)
-          PaddedStructElements.push_back(OldStruct->getElementType(j));
-        PaddedStructElements.push_back(StructPadding);
-        const ArrayRef<Type *> NewStructElements(PaddedStructElements);
-        AllocType = StructType::get(OldStruct->getContext(), NewStructElements,
-                                    OldStruct->isPacked());
-        uint64_t NewStoreSize = Layout.getTypeStoreSize(AllocType);
-        assert(NewStoreSize == AlignedSize);
-      }
-    }
-  }
-  */
   llvm::Value *ItemSize = nullptr;
   llvm::AllocaInst *Alloca = nullptr;
 
@@ -336,7 +291,6 @@ void handle_alloc(llvm::Function *F) {
     for (auto user : replace_user) {
 
       IRBuilder<> builder(user);
-      // std::vector<llvm::Value *> gepArgs;
       auto inter_warp_index =
           createLoad(builder, M->getGlobalVariable("inter_warp_index"));
       auto intra_warp_index =
@@ -597,16 +551,17 @@ void add_warp_loop(std::vector<ParallelRegion> parallel_regions,
 }
 
 void print_parallel_region(std::vector<ParallelRegion> parallel_regions) {
-  printf("get PR:\n");
+  DEBUG_INFO("get PR:\n");
   for (auto region : parallel_regions) {
     auto start = region.start_block;
     auto end = region.end_block;
     auto next = region.successor_block;
-    printf("parallel region: %s->%s next: %s\n", start->getName().str().c_str(),
-           end->getName().str().c_str(), next->getName().str().c_str());
-    printf("have: \n");
+    DEBUG_INFO("parallel region: %s->%s next: %s\n",
+               start->getName().str().c_str(), end->getName().str().c_str(),
+               next->getName().str().c_str());
+    DEBUG_INFO("have: \n");
     for (auto b : region.wrapped_block) {
-      printf("%s\n", b->getName().str().c_str());
+      DEBUG_INFO("%s\n", b->getName().str().c_str());
     }
   }
 }
@@ -839,7 +794,9 @@ public:
     // find parallel region we need to wrap
     auto parallel_regions = getParallelRegions(&F, intra_warp_loop);
     assert(!parallel_regions.empty() && "can not find any parallel regions\n");
-    // print_parallel_region(parallel_regions);
+#ifdef DEBUG
+    print_parallel_region(parallel_regions);
+#endif
 
     if (intra_warp_loop) {
       handle_local_variable_intra_warp(parallel_regions);
@@ -874,7 +831,12 @@ bool has_warp_barrier(llvm::Module *M) {
   return false;
 }
 
+/*
+This function wrap the ParallelRegion with inter/intra warp loops,
+please refer to https://dl.acm.org/doi/abs/10.1145/3554736 for detail.
+*/
 void insert_warp_loop(llvm::Module *M) {
+  DEBUG_INFO("insert warp loop\n");
   llvm::legacy::PassManager Passes;
   need_nested_loop = has_warp_barrier(M);
   // use nested loop only when there are warp-level barrier

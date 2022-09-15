@@ -33,32 +33,22 @@ int main(int argc, char **argv) {
   handle_warp_vote(program);
 
   // replace warp shuffle
-  // VerifyModule(program);
   handle_warp_shfl(program);
+
   // insert sync
-  // VerifyModule(program);
   insert_sync(program);
+
   // split block by sync
-  // VerifyModule(program);
-  std::cout << "split\n" << std::flush;
   split_block_by_sync(program);
   // add loop for intra&intera thread
-
-  // VerifyModule(program);
-  std::cout << "insert\n" << std::flush;
   insert_warp_loop(program);
 
-  // VerifyModule(program);
-
   // (TODO): replace this patch
-  std::cout << "replace\n" << std::flush;
   replace_built_in_function(program);
 
-  // VerifyModule(program);
-  std::cout << "generate\n" << std::flush;
+  // TODO: replace with a more general function
+  // Not only for x86 backend
   generate_x86_format(program);
-
-  // VerifyModule(program);
 
   // performance optimization
   performance_optimization(program);
@@ -68,6 +58,5 @@ int main(int argc, char **argv) {
   DumpModule(program, argv[2]);
 
   fout.close();
-
   return 0;
 }

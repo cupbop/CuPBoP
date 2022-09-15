@@ -74,6 +74,7 @@ bool find_sreg_inst(llvm::Function *F) {
   }
   return false;
 }
+
 bool inline_func_with_tid(llvm::Module *M) {
   bool changed = false;
   std::set<llvm::Function *> need_remove;
@@ -87,8 +88,8 @@ bool inline_func_with_tid(llvm::Module *M) {
         if (CallInst *c = dyn_cast<CallInst>(BI++)) {
           if (c->getCalledFunction()) {
             if (find_sreg_inst(c->getCalledFunction())) {
-              printf("inline: %s\n",
-                     c->getCalledFunction()->getName().str().c_str());
+              DEBUG_INFO("inline: %s\n",
+                         c->getCalledFunction()->getName().str().c_str());
               need_inline.insert(c);
               need_remove.insert(c->getCalledFunction());
             }
@@ -276,7 +277,7 @@ void llvm_preprocess(llvm::Module *M) {
       Pass *thispass = PIs->createPass();
       Passes.add(thispass);
     } else {
-      printf("Pass: %s not found\n", pass.c_str());
+      DEBUG_INFO("Pass: %s not found\n", pass.c_str());
     }
   }
   Passes.run(*M);
@@ -334,8 +335,6 @@ bool lower_constant_expr(llvm::Module *M) {
           auto get_from = get_element_ptr->getOperand(0);
           if (auto addr_cast = dyn_cast<llvm::ConstantExpr>(get_from)) {
             modified = true;
-            // auto ReplInst = addr_cast->getAsInstruction();
-            // ReplInst->insertBefore(get_element_ptr);
             std::vector<Instruction *> Users;
             // Do not replace use during iteration of use. Do it in another loop
             for (auto U : addr_cast->users()) {
@@ -374,6 +373,7 @@ void replace_cuda_math_built_in(llvm::Module *M) {
 }
 
 void init_block(llvm::Module *M, std::ofstream &fout) {
+  DEBUG_INFO("init block\n");
   // using official llvm preprocess
   llvm_preprocess(M);
   // remove useles Cuda function
