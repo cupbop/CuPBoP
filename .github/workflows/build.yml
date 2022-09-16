@@ -62,7 +62,7 @@ jobs:
           hostTranslator reverse-host-x86_64-unknown-linux-gnu.bc host.bc
           llc --relocation-model=pic --filetype=obj  kernel.bc
           llc --relocation-model=pic --filetype=obj  host.bc
-          g++ -o reverse -fPIC -no-pie -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc ../common/command_line_option/*.cc  ../common/time_measurement/*.cc -I../.. -lpthread -lc -lx86Runtime -lthreadPool
+          g++ -o reverse -fPIC -no-pie -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   host.o kernel.o -lpthread -lc -lx86Runtime -lthreadPool
           ./reverse
       - name: Execute the dynamic shared memory demo
         run: |
@@ -74,7 +74,7 @@ jobs:
           hostTranslator reverse-host-x86_64-unknown-linux-gnu.bc host.bc
           llc --relocation-model=pic --filetype=obj  kernel.bc
           llc --relocation-model=pic --filetype=obj  host.bc
-          g++ -o reverse -fPIC -no-pie -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc ../common/command_line_option/*.cc  ../common/time_measurement/*.cc -I../.. -lpthread -lc -lx86Runtime -lthreadPool
+          g++ -o reverse -fPIC -no-pie -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   host.o kernel.o -lpthread -lc -lx86Runtime -lthreadPool
           ./reverse
       - name: Execute the AES example
         run: |
