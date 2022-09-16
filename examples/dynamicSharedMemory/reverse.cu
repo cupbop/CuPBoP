@@ -2,9 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-__global__ void staticReverse(int *d, int n)
+__global__ void dynamicReverse(int *d, int n)
 {
-  __shared__ int s[64];
+  extern __shared__ int s[];
   int t = threadIdx.x;
   int tr = n-t-1;
   s[t] = d[t];
@@ -28,7 +28,7 @@ int main()
 
   // run version with static shared memory
   cudaMemcpy(d_d, a, n*sizeof(int), cudaMemcpyHostToDevice);
-  staticReverse<<<1,n>>>(d_d, n);
+  dynamicReverse<<<1,n,n*sizeof(int)>>>(d_d, n);
   cudaMemcpy(d, d_d, n*sizeof(int), cudaMemcpyDeviceToHost);
   for (int i = 0; i < n; i++)
     if (d[i] != r[i]) {
