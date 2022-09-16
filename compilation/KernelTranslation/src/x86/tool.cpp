@@ -234,6 +234,7 @@ void replace_dynamic_shared_memory(llvm::Module *M) {
     auto new_bit_cast =
         new BitCastInst(load_shared_memory,
                         dynamic_shared_memory_addr->getType(), "new_bit_cast");
+    new_bit_cast->insertAfter(load_shared_memory);
     dynamic_shared_memory_addr->replaceUsesWithIf(new_bit_cast, [&](Use &U) {
       auto *Instr = dyn_cast<Instruction>(U.getUser());
       return Instr != new_bit_cast && Instr != load_shared_memory;
