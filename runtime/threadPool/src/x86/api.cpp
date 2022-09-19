@@ -16,7 +16,7 @@ int device_max_compute_units = 1;
 bool device_initilized = false;
 int init_device() {
   if (device_initilized)
-    return 0;
+    return C_SUCCESS;
   device_initilized = true;
   cu_device *device = (cu_device *)calloc(1, sizeof(cu_device));
   if (device == NULL)
@@ -28,11 +28,7 @@ int init_device() {
   device_max_compute_units = device->max_compute_units;
 
   // initialize scheduler
-  int ret = scheduler_init(*device);
-  if (ret != C_SUCCESS)
-    return ret;
-
-  return C_SUCCESS;
+  return scheduler_init(*device);
 }
 
 // Create Kernel
@@ -84,7 +80,8 @@ int schedulerEnqueueKernel(cu_kernel *k) {
       k->totalBlocks; // calculate gpu_block_to_execute_per_cpu_thread
   int gpuBlockToExecutePerCpuThread =
       (totalBlocks + device_max_compute_units - 1) / device_max_compute_units;
-  TaskToExecute = 0;
+  TaskToExecute = (totalBlocks + gpuBlockToExecutePerCpuThread - 1) /
+                  gpuBlockToExecutePerCpuThread;
   for (int startBlockIdx = 0; startBlockIdx < totalBlocks;
        startBlockIdx += gpuBlockToExecutePerCpuThread) {
     cu_kernel *p = new cu_kernel(*k);
@@ -92,7 +89,6 @@ int schedulerEnqueueKernel(cu_kernel *k) {
     p->endBlockId = std::min(startBlockIdx + gpuBlockToExecutePerCpuThread - 1,
                              totalBlocks - 1);
     scheduler->kernelQueue->enqueue(p);
-    TaskToExecute++;
   }
   return C_SUCCESS;
 }
@@ -107,16 +103,12 @@ int cuLaunchKernel(cu_kernel **k) {
   // Calculate Block Size N/numBlocks
   cu_kernel *ker = *k;
   int status = C_RUN;
-  // stream == 0 add to the kernelQueue
-  if (ker->stream == 0) {
-    // set complete to false, this variable is used for sync
-    for (int i = 0; i < scheduler->num_worker_threads; i++) {
-      scheduler->thread_pool[i].completeTask = 0;
-    }
-    schedulerEnqueueKernel(ker);
-  } else {
-    assert(0 && "MultiStream no implemente\n");
+  // set complete to false, this variable is used for sync
+  for (int i = 0; i < scheduler->num_worker_threads; i++) {
+    scheduler->thread_pool[i].completeTask = 0;
   }
+  schedulerEnqueueKernel(ker);
+
   return 0;
 }
 

@@ -107,21 +107,18 @@ cudaError_t cudaStreamCopyAttributes(cudaStream_t dst, cudaStream_t src) {
 
 static int stream_counter = 1;
 /*
-  cudaStream_t is a Opaque Structure
-  Overwrites cudaStream_t into custom cstreamData structure
-  (does hardware uses the cudaStream_t stream)
+From our evaluation, CPU backend can gain little benefit
+from multi stream. Thus, we only use single stream
 */
-cudaError_t cudaStreamCreate(cudaStream_t *pStream) {
-  assert(0 && "cudaStreamCreate no Implement\n");
-}
+cudaError_t cudaStreamCreate(cudaStream_t *pStream) { return cudaSuccess; }
 
-cudaError_t cudaStreamDestroy(cudaStream_t stream) {
-  assert(0 && "cudaStreamDestroy No Implement\n");
-}
+cudaError_t cudaStreamDestroy(cudaStream_t stream) { return cudaSuccess; }
 
-cudaError_t cudaStreamSynchronize(cudaStream_t stream) {
-  assert(0 && "cudaStreamSynchronize No Implement\n");
-}
+// All kernel launch will following a sync, thus, this should
+// always be true
+cudaError_t cudaStreamQuery(cudaStream_t stream) { return cudaSuccess; }
+
+cudaError_t cudaStreamSynchronize(cudaStream_t stream) { return cudaSuccess; }
 
 cudaError_t cudaGetDeviceCount(int *count) {
   // dummy value

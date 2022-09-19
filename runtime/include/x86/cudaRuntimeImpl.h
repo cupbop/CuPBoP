@@ -22,6 +22,7 @@ cudaError_t cudaSetDevice(int device);
 cudaError_t cudaStreamCopyAttributes(cudaStream_t dst, cudaStream_t src);
 cudaError_t cudaStreamCreate(cudaStream_t *pStream);
 cudaError_t cudaStreamDestroy(cudaStream_t stream);
+cudaError_t cudaStreamQuery(cudaStream_t stream);
 cudaError_t cudaStreamSynchronize(cudaStream_t stream);
 }
 #endif
