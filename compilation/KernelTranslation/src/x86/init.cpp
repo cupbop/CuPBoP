@@ -187,7 +187,6 @@ void remove_metadata(llvm::Module *M) {
 }
 
 void init_llvm_pass() {
-
   InitializeAllTargets();
   InitializeAllTargetMCs();
   InitializeAllAsmPrinters();
@@ -204,60 +203,6 @@ void init_llvm_pass() {
   initializeInstCombine(Registry);
   initializeInstrumentation(Registry);
   initializeTarget(Registry);
-
-  llvm::StringMap<llvm::cl::Option *> &opts = llvm::cl::getRegisteredOptions();
-
-  llvm::cl::Option *O = nullptr;
-
-  O = opts["scalarize-load-store"];
-  assert(O && "could not find LLVM option 'scalarize-load-store'");
-  O->addOccurrence(1, StringRef("scalarize-load-store"), StringRef("1"), false);
-
-  // LLVM inner loop vectorizer does not check whether the loop inside
-  // another loop, in which case even a small trip count loops might be
-  // worthwhile to vectorize.
-  O = opts["vectorizer-min-trip-count"];
-  assert(O && "could not find LLVM option 'vectorizer-min-trip-count'");
-  O->addOccurrence(1, StringRef("vectorizer-min-trip-count"), StringRef("2"),
-                   false);
-
-  // Disable jump threading optimization with following two options from
-  // duplicating blocks. Using jump threading will mess up parallel region
-  // construction especially when kernel contains barriers.
-  // TODO: If enabled then parallel region construction code needs
-  // improvements and make sure it doesn't disallow other optimizations like
-  // vectorization.
-  O = opts["jump-threading-threshold"];
-  assert(O && "could not find LLVM option 'jump-threading-threshold'");
-  O->addOccurrence(1, StringRef("jump-threading-threshold"), StringRef("0"),
-                   false);
-  O = opts["jump-threading-implication-search-threshold"];
-  assert(O && "could not find LLVM option "
-              "'jump-threading-implication-search-threshold'");
-  O->addOccurrence(1, StringRef("jump-threading-implication-search-threshold"),
-                   StringRef("0"), false);
-
-  // Enable diagnostics from the loop vectorizer.
-  O = opts["pass-remarks-missed"];
-  assert(O && "could not find LLVM option 'pass-remarks-missed'");
-  O->addOccurrence(1, StringRef("pass-remarks-missed"),
-                   StringRef("loop-vectorize"), false);
-  O->addOccurrence(1, StringRef("pass-remarks-missed"),
-                   StringRef("slp-vectorize"), false);
-
-  O = opts["pass-remarks-analysis"];
-  assert(O && "could not find LLVM option 'pass-remarks-analysis'");
-  O->addOccurrence(1, StringRef("pass-remarks-analysis"),
-                   StringRef("loop-vectorize"), false);
-  O->addOccurrence(1, StringRef("pass-remarks-analysis"),
-                   StringRef("slp-vectorize"), false);
-
-  O = opts["pass-remarks"];
-  assert(O && "could not find LLVM option 'pass-remarks'");
-  O->addOccurrence(1, StringRef("pass-remarks"), StringRef("loop-vectorize"),
-                   false);
-  O->addOccurrence(1, StringRef("pass-remarks"), StringRef("slp-vectorize"),
-                   false);
 }
 
 void llvm_preprocess(llvm::Module *M) {
