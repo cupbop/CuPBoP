@@ -79,12 +79,11 @@ Please refer to [Contribution.md](./CONTRIBUTING.md) for more detail.
 
 ## Related publications
 
-- COX: Exposing CUDA Warp-Level Functions to CPUs
-ACM Transactions on Architecture and Code Optimization
-[link](https://dl.acm.org/doi/abs/10.1145/3554736)
-- CuPBoP: CUDA for Parallelized and Broad-range Processors
-arxiv preprint
-[link](https://arxiv.org/abs/2206.07896)
+If you want to refer CuPBoP in your projects, please cite the related
+papers:
+
+- [COX: Exposing CUDA Warp-Level Functions to CPUs](https://dl.acm.org/doi/abs/10.1145/3554736)
+- [CuPBoP: CUDA for Parallelized and Broad-range Processors](https://arxiv.org/abs/2206.07896)
 
 ## Contributors
 
