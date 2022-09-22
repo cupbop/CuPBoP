@@ -35,7 +35,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake .. -DLLVM_CONFIG_PATH=`which llvm-config` -DCUDA_PATH=$CuPBoP_PATH/cuda-10.1
+          cmake .. -DLLVM_CONFIG_PATH=`which llvm-config` -DCUDA_PATH=../cuda-10.1
           make -j8
       - name: clone SC evaluation code
         run: |
