@@ -343,6 +343,9 @@ void handle_local_variable_intra_warp(std::vector<ParallelRegion> PRs,
                 allStoreNonDivergence = false;
                 break;
               }
+            } else if (!isa<LoadInst>(user)) {
+              allStoreNonDivergence = false;
+              break;
             }
           }
           if (allStoreNonDivergence) {
