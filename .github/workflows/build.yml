@@ -92,7 +92,7 @@ jobs:
           hostTranslator bs_cuda_benchmark-host-x86_64-unknown-linux-gnu.bc host.bc
           llc --relocation-model=pic --filetype=obj  kernel.bc
           llc --relocation-model=pic --filetype=obj  host.bc
-          g++ -o bs -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc ../common/command_line_option/*.cc  ../common/time_measurement/*.cc -I../.. -lpthread -lc -lx86Runtime -lthreadPool
+          g++ -o bs -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -I${{ github.workspace }}/cuda-10.1/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc ../common/command_line_option/*.cc  ../common/time_measurement/*.cc -I../.. -lpthread -lc -lx86Runtime -lthreadPool
           ./bs -x 16777216 -q -t --chunk 512 -v
       - name: Execute the EP example
         run: |
@@ -104,7 +104,7 @@ jobs:
           hostTranslator ep_cuda_benchmark-host-x86_64-unknown-linux-gnu.bc host.bc
           llc --relocation-model=pic --filetype=obj  kernel.bc
           llc --relocation-model=pic --filetype=obj  host.bc
-          g++ -o ep -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc ../common/command_line_option/*.cc  ../common/time_measurement/*.cc -I../.. -lpthread -lc -lx86Runtime -lthreadPool
+          g++ -o ep -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -I${{ github.workspace }}/cuda-10.1/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc ../common/command_line_option/*.cc  ../common/time_measurement/*.cc -I../.. -lpthread -lc -lx86Runtime -lthreadPool
           ./ep -q -v
       - name: Execute the FIR example
         run: |
@@ -116,7 +116,7 @@ jobs:
           hostTranslator fir_cuda_benchmark-host-x86_64-unknown-linux-gnu.bc host.bc
           llc --relocation-model=pic --filetype=obj  kernel.bc
           llc --relocation-model=pic --filetype=obj  host.bc
-          g++ -o fir -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc ../common/command_line_option/*.cc  ../common/time_measurement/*.cc -I../.. -lpthread -lc -lx86Runtime -lthreadPool
+          g++ -o fir -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -I${{ github.workspace }}/cuda-10.1/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc ../common/command_line_option/*.cc  ../common/time_measurement/*.cc -I../.. -lpthread -lc -lx86Runtime -lthreadPool
           ./fir -q -v
       - name: Execute the GA example
         run: |
@@ -128,7 +128,7 @@ jobs:
           hostTranslator ga_cuda_benchmark-host-x86_64-unknown-linux-gnu.bc host.bc
           llc --relocation-model=pic --filetype=obj  kernel.bc
           llc --relocation-model=pic --filetype=obj  host.bc
-          g++ -o ga -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc ../common/command_line_option/*.cc  ../common/time_measurement/*.cc -I../.. -lpthread -lc -lx86Runtime -lthreadPool
+          g++ -o ga -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -I${{ github.workspace }}/cuda-10.1/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc ../common/command_line_option/*.cc  ../common/time_measurement/*.cc -I../.. -lpthread -lc -lx86Runtime -lthreadPool
       - name: Execute the HIST example
         run: |
           cd ${{ github.workspace }}/SC_evaluate/Hetero-cox/src/hist
@@ -139,7 +139,7 @@ jobs:
           hostTranslator hist_cuda_benchmark-host-x86_64-unknown-linux-gnu.bc host.bc
           llc --relocation-model=pic --filetype=obj  kernel.bc
           llc --relocation-model=pic --filetype=obj  host.bc
-          g++ -o hist -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc ../common/command_line_option/*.cc  ../common/time_measurement/*.cc -I../.. -lpthread -lc -lx86Runtime -lthreadPool
+          g++ -o hist -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -I${{ github.workspace }}/cuda-10.1/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc ../common/command_line_option/*.cc  ../common/time_measurement/*.cc -I../.. -lpthread -lc -lx86Runtime -lthreadPool
           ./hist -q -v
       - name: Execute the KMeans example
         run: |
@@ -151,7 +151,7 @@ jobs:
           hostTranslator kmeans_cuda_benchmark-host-x86_64-unknown-linux-gnu.bc host.bc
           llc --relocation-model=pic --filetype=obj  kernel.bc
           llc --relocation-model=pic --filetype=obj  host.bc
-          g++ -o kmeans -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc ../common/command_line_option/*.cc  ../common/time_measurement/*.cc -I../.. -lpthread -lc -lx86Runtime -lthreadPool
+          g++ -o kmeans -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -I${{ github.workspace }}/cuda-10.1/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc ../common/command_line_option/*.cc  ../common/time_measurement/*.cc -I../.. -lpthread -lc -lx86Runtime -lthreadPool
           ./kmeans -i ../../data/kmeans/100_34.txt -q -v
       - name: Execute the PR example
         run: |
@@ -163,7 +163,7 @@ jobs:
           hostTranslator pr_cuda_benchmark-host-x86_64-unknown-linux-gnu.bc host.bc
           llc --relocation-model=pic --filetype=obj  kernel.bc
           llc --relocation-model=pic --filetype=obj  host.bc
-          g++ -o pr -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc ../common/command_line_option/*.cc  ../common/time_measurement/*.cc -I../.. -lpthread -lc -lx86Runtime -lthreadPool
+          g++ -o pr -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -I${{ github.workspace }}/cuda-10.1/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc ../common/command_line_option/*.cc  ../common/time_measurement/*.cc -I../.. -lpthread -lc -lx86Runtime -lthreadPool
           ./pr -i ../../data/pr/8192.data -q -v
       - name: Execute the lavaMD example
         run: |
@@ -175,5 +175,5 @@ jobs:
           hostTranslator kernel_gpu_cuda_wrapper-host-x86_64-unknown-linux-gnu.bc host.bc
           llc --relocation-model=pic --filetype=obj  kernel.bc
           llc --relocation-model=pic --filetype=obj  host.bc
-          g++ -o lavaMD -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   main.c host.o kernel.o util/timer/timer.c util/num/num.c -lpthread -lc -lx86Runtime -lthreadPool -pthread
+          g++ -o lavaMD -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -I${{ github.workspace }}/cuda-10.1/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   main.c host.o kernel.o util/timer/timer.c util/num/num.c -lpthread -lc -lx86Runtime -lthreadPool -pthread
           ./lavaMD -boxes1d 10
