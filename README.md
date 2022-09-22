@@ -5,7 +5,7 @@
 CuPBoP is a framework which support executing unmodified CUDA source code
 on non-NVIDIA devices.
 Currently, CuPBoP support serveral CPU backends, including x86, AArch64, and RISC-V.
-Supporting the RISC-V GPU [Vortex](https://vortex.cc.gatech.edu/) is working in progress.
+Supporting [Vortex](https://vortex.cc.gatech.edu/) (a RISC-V GPU) is working in progress.
 
 ## Install
 
@@ -13,6 +13,12 @@ Supporting the RISC-V GPU [Vortex](https://vortex.cc.gatech.edu/) is working in 
 
 - Linux system
 - [LLVM 14.0.1](https://github.com/llvm/llvm-project/releases/tag/llvmorg-14.0.1)
+- CUDA Toolkit
+
+Although CuPBoP does not require NVIDIA GPUs,
+it needs CUDA to compile the source programs to NVVM/LLVM IRs.
+CUDA toolkit can be built on machines without NVIDIA GPUs.
+For building CUDA toolkit, please refer to <https://developer.nvidia.com/cuda-downloads>.
 
 ### Installation
 
@@ -23,28 +29,17 @@ Supporting the RISC-V GPU [Vortex](https://vortex.cc.gatech.edu/) is working in 
    cd CuPBoP
    export CuPBoP_PATH=`pwd`
    export LD_LIBRARY_PATH=$CuPBoP_PATH/build/runtime:$CuPBoP_PATH/build/runtime/threadPool:$LD_LIBRARY_PATH
+   export CUDA_PATH=/usr/local/cuda-11.7 # set to your own location
    ```
 
-2. As CuPBoP relies on CUDA structures, we need to download the CUDA header file
-
-   ```bash
-   wget https://www.dropbox.com/s/r18io0zu3idke5p/cuda-header.tar.gz?dl=1
-   tar -xzf 'cuda-header.tar.gz?dl=1'
-   cp -r include/* runtime/threadPool/include/
-   ```
-
-3. Other CUDA files are also required for compiling CUDA source code to LLVM IR
-
-   ```bash
-   wget https://www.dropbox.com/s/4pckqsjnl920gpn/cuda-10.1.tar.gz?dl=1
-   tar -xzf 'cuda-10.1.tar.gz?dl=1'
-   ```
-
-4. Build CuPBoP
+2. Build CuPBoP
 
    ```bash
    mkdir build && cd build
-   cmake .. -DLLVM_CONFIG_PATH=`which llvm-config` # need path to llvm-config
+   #set -DDEBUG=ON for debugging
+   cmake .. \
+      -DLLVM_CONFIG_PATH=`which llvm-config` \
+      -DCUDA_PATH=$CUDA_PATH
    make
    ```
 
@@ -54,8 +49,8 @@ Supporting the RISC-V GPU [Vortex](https://vortex.cc.gatech.edu/) is working in 
 cd examples/vecadd
 # Compile CUDA source code (both host and kernel) to bitcode files
 clang++ -std=c++11 vecadd.cu \
-      -I../.. --cuda-path=$CuPBoP_PATH/cuda-10.1 \
-      --cuda-gpu-arch=sm_50 -L$CuPBoP_PATH/cuda-10.1/lib64 \
+      -I../.. --cuda-path=$CUDA_PATH \
+      --cuda-gpu-arch=sm_50 -L$CUDA_PATH/lib64 \
       -lcudart_static -ldl -lrt -pthread -save-temps -v  || true
 # Apply compilation transformations on the kernel bitcode file
 $CuPBoP_PATH/build/compilation/kernelTranslator \
@@ -72,7 +67,7 @@ g++ -o vecadd -fPIC -no-pie \
       -L$CuPBoP_PATH/build/runtime  \
       -L$CuPBoP_PATH/build/runtime/threadPool \
       host.o kernel.o \
-      -I../.. -lpthread -lc -lx86Runtime -lthreadPool
+      -I../.. -lc -lx86Runtime -lthreadPool -lpthread
 # Execute
 ./vecadd
 ```

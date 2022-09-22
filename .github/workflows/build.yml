@@ -22,12 +22,6 @@ jobs:
         uses: KyleMayes/install-llvm-action@v1
         with:
           version: "14.0"
-      - name: Download CUDA header files
-        run: |
-          cd ${{ github.workspace }}
-          wget https://www.dropbox.com/s/r18io0zu3idke5p/cuda-header.tar.gz?dl=1
-          tar -xzf 'cuda-header.tar.gz?dl=1'
-          cp -r include/* runtime/threadPool/include/
       - name: Download CUDA files used for compiling NVVM IR
         run: |
           cd ${{ github.workspace }}
@@ -41,7 +35,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake .. -DLLVM_CONFIG_PATH=`which llvm-config`
+          cmake .. -DLLVM_CONFIG_PATH=`which llvm-config` -DCUDA_PATH=$CuPBoP_PATH/cuda-10.1
           make -j8
       - name: clone SC evaluation code
         run: |

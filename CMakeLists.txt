@@ -32,13 +32,20 @@ if(DEFINED LLVM_CONFIG_PATH)
 else()
   message(FATAL_ERROR "llvm-config is required")
 endif()
+# get CUDA PATH
+if(DEFINED CUDA_PATH)
+  message(STATUS "Using CUDA: ${CUDA_PATH}")
+else()
+  message(FATAL_ERROR "CUDA_PATH is required")
+endif()
 
 option(DEBUG "Print debug information." OFF)
 if(DEBUG)
   add_definitions(-DDEBUG)
 endif()
 
-set(CMAKE_CXX_FLAGS "${LLVM_CXX_FLAG} ${CMAKE_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS
+    "-I${CUDA_PATH}/include ${LLVM_CXX_FLAG} ${CMAKE_CXX_FLAGS}")
 
 set(GCC_COVERAGE_LINK_FLAGS
     "-L${LLVM_LIB_PATH} ${LLVM_LINK_FLAG} -lz -lrt -ldl -ltinfo -lpthread -lm")
