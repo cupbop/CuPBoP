@@ -52,3 +52,5 @@ set(GCC_COVERAGE_LINK_FLAGS
 
 add_subdirectory(compilation)
 add_subdirectory(runtime)
+enable_testing()
+add_subdirectory(tests)

@@ -1,3 +1,6 @@
 [submodule "external/moodycamel"]
 	path = external/moodycamel
 	url = https://github.com/cameron314/concurrentqueue
+[submodule "test/Hetero-Mark"]
+	path = test/Hetero-Mark
+	url = https://github.com/NUCAR-DEV/Hetero-Mark
