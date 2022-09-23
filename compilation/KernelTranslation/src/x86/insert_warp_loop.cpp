@@ -100,7 +100,6 @@ bool ShouldNotBeContextSaved(llvm::Instruction *instr) {
 llvm::Instruction *GetContextArray(llvm::Instruction *instruction,
                                    bool intra_warp_loop) {
   std::ostringstream var;
-
   if (std::string(instruction->getName().str()) != "") {
     var << instruction->getName().str();
   } else if (tempInstructionIds.find(instruction) != tempInstructionIds.end()) {
@@ -109,10 +108,7 @@ llvm::Instruction *GetContextArray(llvm::Instruction *instruction,
     tempInstructionIds[instruction] = tempInstructionIndex++;
     var << tempInstructionIds[instruction];
   }
-  if (intra_warp_loop)
-    var << "_intra_warp_";
-  else
-    var << "_inter_warp_";
+  var << "_extend_array";
   std::string varName = var.str();
 
   if (contextArrays.find(varName) != contextArrays.end())
