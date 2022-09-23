@@ -76,7 +76,7 @@ int need_nested_loop;
 
 // adding multiple kenerl in file support
 
-bool ShouldNotBeContextSaved(llvm::Instruction *instr) {
+bool ShouldNotBeContextSaved(llvm::Instruction *instr, DivergenceInfo &DI) {
   if (isa<BranchInst>(instr))
     return true;
 
@@ -91,9 +91,7 @@ bool ShouldNotBeContextSaved(llvm::Instruction *instr) {
     if (load_addr == M->getGlobalVariable("warp_vote"))
       return true;
   }
-  // TODO: we should further analyze whether the local variable
-  // is same among all threads within a wrap
-  return false;
+  return !DI.isDivergent(*instr);
 }
 
 // generate countpart alloc in the beginning of the Function
@@ -394,7 +392,7 @@ void handle_local_variable_intra_warp(std::vector<ParallelRegion> PRs,
       for (llvm::BasicBlock::iterator instr = bb->begin(); instr != bb->end();
            ++instr) {
         llvm::Instruction *instruction = &*instr;
-        if (ShouldNotBeContextSaved(instruction))
+        if (ShouldNotBeContextSaved(instruction, DI))
           continue;
         for (Instruction::use_iterator ui = instruction->use_begin(),
                                        ue = instruction->use_end();
