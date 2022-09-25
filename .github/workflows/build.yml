@@ -35,7 +35,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake .. -DLLVM_CONFIG_PATH=`which llvm-config` -DCUDA_PATH=${{ github.workspace }}/cuda-10.1
+          cmake .. -DLLVM_CONFIG_PATH=`which llvm-config` -DCUDA_PATH=${{ github.workspace }}/cuda-10.1 -DHETERO_MARK_DATA=${{ github.workspace }}/data
           make -j8
       - name: clone SC evaluation code
         run: |

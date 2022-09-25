@@ -18,5 +18,6 @@ foreach(case IN LISTS TESTCASES)
     NAME "${case}"
     COMMAND
       ${BASH_PROGRAM} ${CMAKE_CURRENT_SOURCE_DIR}/runHeteroMark.sh ${case}
-      ${CUDA_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/Hetero-Mark ${CMAKE_BINARY_DIR})
+      ${CUDA_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/Hetero-Mark ${CMAKE_BINARY_DIR}
+      ${HETERO_MARK_DATA})
 endforeach()

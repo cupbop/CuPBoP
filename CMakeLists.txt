@@ -53,4 +53,6 @@ set(GCC_COVERAGE_LINK_FLAGS
 add_subdirectory(compilation)
 add_subdirectory(runtime)
 enable_testing()
+
+option(HETERO_MARK_DATA "The path to download hetero-mark dataset." /tmp/data)
 add_subdirectory(tests)

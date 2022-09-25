@@ -4,12 +4,14 @@ TestCase=$1
 CUDA_PATH=$2
 HeteroMark_PATH=$3
 CuPBoP_BUILD_PATH=$4
-DATASET_PATH=/tmp/data
+DATASET_PATH=$5
 if [ ! -d $DATASET_PATH ]; then
     echo "Download Hetero Mark dataset"
-    cd /tmp
+    mkdir $DATASET_PATH
+    cd $DATASET_PATH
     wget https://www.dropbox.com/s/ie2hcxw9lfoghg8/data.tar.gz?dl=1
     tar -xzf 'data.tar.gz?dl=1'
+    mv data/* .
 fi
 
 mkdir -p $TestCase
