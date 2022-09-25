@@ -68,7 +68,7 @@ jobs:
       - name: Execute Hetero-mark benchmark
         run: |
           cd ${{ github.workspace }}/build
-          make test
+          make CTEST_OUTPUT_ON_FAILURE=1 test
       - name: Execute the lavaMD example
         run: |
           cd ${{ github.workspace }}/SC_evaluate/rodinia-cox/lavaMD
