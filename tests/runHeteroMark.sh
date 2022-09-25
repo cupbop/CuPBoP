@@ -28,5 +28,42 @@ g++ -o $1 -fPIC -no-pie \
     $HeteroMark_PATH/src/$1/cuda/main.cc host.o kernel.o $HeteroMark_PATH/src/$1/*.cc  $HeteroMark_PATH/src/common/benchmark/*.cc \
     $HeteroMark_PATH/src/common/command_line_option/*.cc  $HeteroMark_PATH/src/common/time_measurement/*.cc \
     -L$CuPBoP_BUILD_PATH/runtime   -L$CuPBoP_BUILD_PATH/runtime/threadPool \
-    -I$HeteroMark_PATH -lpthread -lc -lx86Runtime -lthreadPool
-./$1 -i $DATASET_PATH/aes/1KB.data -k $DATASET_PATH/aes/key.data -q -v
+    -I$HeteroMark_PATH -I$CUDA_PATH/include -lpthread -lc -lx86Runtime -lthreadPool
+
+case $1 in
+  aes)
+    ./$1 -i $DATASET_PATH/aes/1KB.data -k $DATASET_PATH/aes/key.data -q -v
+    ;;
+
+  bs)
+    ./$1 -q -v
+    ;;
+
+  ep)
+    ./$1 -q -v -m 10 -x 64
+    ;;
+
+  fir)
+    ./$1 -q -v
+    ;;
+
+#   ga)
+#     ./$1 -q -i $DATASET_PATH/ga/1024_64.data -v
+#     ;;
+
+  hist)
+    ./$1 -q -v
+    ;;
+
+  kmeans)
+    ./$1 -i $DATASET_PATH/kmeans/100_34.txt -q -v
+    ;;
+
+  pr)
+    ./$1 -i $DATASET_PATH/pr/512.data -q -v
+    ;;
+
+  *)
+    echo -n "unknown"
+    ;;
+esac

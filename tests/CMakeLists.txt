@@ -1,5 +1,13 @@
-set(TESTCASES aes)
-foreach(case ${TESTCASES})
+set(TESTCASES
+    aes
+    bs
+    ep
+    fir
+    ga
+    hist
+    kmeans
+    pr)
+foreach(case IN LISTS TESTCASES)
   message(STATUS "Add test: ${case}")
   message(STATUS "${CMAKE_CURRENT_SOURCE_DIR}")
 

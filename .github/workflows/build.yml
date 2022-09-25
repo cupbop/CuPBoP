@@ -41,11 +41,6 @@ jobs:
         run: |
           cd ${{ github.workspace }}
           git clone https://github.com/drcut/SC_evaluate
-      - name: Download data used to verify
-        run: |
-          cd ${{ github.workspace }}/SC_evaluate/Hetero-cox
-          wget https://www.dropbox.com/s/ie2hcxw9lfoghg8/data.tar.gz?dl=1
-          tar -xzf 'data.tar.gz?dl=1'
       - name: Execute the static shared memory demo
         run: |
           cd ${{ github.workspace }}/examples/sharedMemory
@@ -70,101 +65,10 @@ jobs:
           llc --relocation-model=pic --filetype=obj  host.bc
           g++ -o reverse -fPIC -no-pie -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   host.o kernel.o -lc -lx86Runtime -lthreadPool -lpthread
           ./reverse
-      - name: Execute the AES example
+      - name: Execute Hetero-mark benchmark
         run: |
-          cd ${{ github.workspace }}/SC_evaluate/Hetero-cox/src/aes
-          clang++ -std=c++11 cuda/aes_cuda_benchmark.cu -I../.. --cuda-path=${{ github.workspace }}/cuda-10.1  --cuda-gpu-arch=sm_50 -L${{ github.workspace }}/cuda-10.1/lib64 -lcudart_static -ldl -lrt -pthread -save-temps -v  || true
-          export LD_LIBRARY_PATH=${{ github.workspace }}/build/runtime:${{ github.workspace }}/build/runtime/threadPool:$LD_LIBRARY_PATH
-          export PATH=${{ github.workspace }}/build/compilation:$PATH
-          kernelTranslator aes_cuda_benchmark-cuda-nvptx64-nvidia-cuda-sm_50.bc kernel.bc
-          hostTranslator aes_cuda_benchmark-host-x86_64-unknown-linux-gnu.bc host.bc
-          llc --relocation-model=pic --filetype=obj  kernel.bc
-          llc --relocation-model=pic --filetype=obj  host.bc
-          g++ -o aes -fPIC -no-pie -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc ../common/command_line_option/*.cc  ../common/time_measurement/*.cc -I../.. -lpthread -lc -lx86Runtime -lthreadPool
-          ./aes -i ../../data/aes/1KB.data -k ../../data/aes/key.data -q -v
-      - name: Execute the BS example
-        run: |
-          cd ${{ github.workspace }}/SC_evaluate/Hetero-cox/src/bs
-          clang++ -std=c++11 cuda/bs_cuda_benchmark.cu -I../.. --cuda-path=${{ github.workspace }}/cuda-10.1  --cuda-gpu-arch=sm_50 -L${{ github.workspace }}/cuda-10.1/lib64 -lcudart_static -ldl -lrt -pthread -save-temps -v  || true
-          export LD_LIBRARY_PATH=${{ github.workspace }}/build/runtime:${{ github.workspace }}/build/runtime/threadPool:$LD_LIBRARY_PATH
-          export PATH=${{ github.workspace }}/build/compilation:$PATH
-          kernelTranslator bs_cuda_benchmark-cuda-nvptx64-nvidia-cuda-sm_50.bc kernel.bc
-          hostTranslator bs_cuda_benchmark-host-x86_64-unknown-linux-gnu.bc host.bc
-          llc --relocation-model=pic --filetype=obj  kernel.bc
-          llc --relocation-model=pic --filetype=obj  host.bc
-          g++ -o bs -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -I${{ github.workspace }}/cuda-10.1/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc ../common/command_line_option/*.cc  ../common/time_measurement/*.cc -I../.. -lpthread -lc -lx86Runtime -lthreadPool
-          ./bs -x 16777216 -q -t --chunk 512 -v
-      - name: Execute the EP example
-        run: |
-          cd ${{ github.workspace }}/SC_evaluate/Hetero-cox/src/ep
-          clang++ -std=c++11 cuda/ep_cuda_benchmark.cu -I../.. --cuda-path=${{ github.workspace }}/cuda-10.1  --cuda-gpu-arch=sm_50 -L${{ github.workspace }}/cuda-10.1/lib64 -lcudart_static -ldl -lrt -pthread -save-temps -v  || true
-          export LD_LIBRARY_PATH=${{ github.workspace }}/build/runtime:${{ github.workspace }}/build/runtime/threadPool:$LD_LIBRARY_PATH
-          export PATH=${{ github.workspace }}/build/compilation:$PATH
-          kernelTranslator ep_cuda_benchmark-cuda-nvptx64-nvidia-cuda-sm_50.bc kernel.bc
-          hostTranslator ep_cuda_benchmark-host-x86_64-unknown-linux-gnu.bc host.bc
-          llc --relocation-model=pic --filetype=obj  kernel.bc
-          llc --relocation-model=pic --filetype=obj  host.bc
-          g++ -o ep -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -I${{ github.workspace }}/cuda-10.1/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc ../common/command_line_option/*.cc  ../common/time_measurement/*.cc -I../.. -lpthread -lc -lx86Runtime -lthreadPool
-          ./ep -q -v
-      - name: Execute the FIR example
-        run: |
-          cd ${{ github.workspace }}/SC_evaluate/Hetero-cox/src/fir
-          clang++ -std=c++11 cuda/fir_cuda_benchmark.cu -I../.. --cuda-path=${{ github.workspace }}/cuda-10.1  --cuda-gpu-arch=sm_50 -L${{ github.workspace }}/cuda-10.1/lib64 -lcudart_static -ldl -lrt -pthread -save-temps -v  || true
-          export LD_LIBRARY_PATH=${{ github.workspace }}/build/runtime:${{ github.workspace }}/build/runtime/threadPool:$LD_LIBRARY_PATH
-          export PATH=${{ github.workspace }}/build/compilation:$PATH
-          kernelTranslator fir_cuda_benchmark-cuda-nvptx64-nvidia-cuda-sm_50.bc kernel.bc
-          hostTranslator fir_cuda_benchmark-host-x86_64-unknown-linux-gnu.bc host.bc
-          llc --relocation-model=pic --filetype=obj  kernel.bc
-          llc --relocation-model=pic --filetype=obj  host.bc
-          g++ -o fir -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -I${{ github.workspace }}/cuda-10.1/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc ../common/command_line_option/*.cc  ../common/time_measurement/*.cc -I../.. -lpthread -lc -lx86Runtime -lthreadPool
-          ./fir -q -v
-      - name: Execute the GA example
-        run: |
-          cd ${{ github.workspace }}/SC_evaluate/Hetero-cox/src/ga
-          clang++ -std=c++11 cuda/ga_cuda_benchmark.cu -I../.. --cuda-path=${{ github.workspace }}/cuda-10.1  --cuda-gpu-arch=sm_50 -L${{ github.workspace }}/cuda-10.1/lib64 -lcudart_static -ldl -lrt -pthread -save-temps -v  || true
-          export LD_LIBRARY_PATH=${{ github.workspace }}/build/runtime:${{ github.workspace }}/build/runtime/threadPool:$LD_LIBRARY_PATH
-          export PATH=${{ github.workspace }}/build/compilation:$PATH
-          kernelTranslator ga_cuda_benchmark-cuda-nvptx64-nvidia-cuda-sm_50.bc kernel.bc
-          hostTranslator ga_cuda_benchmark-host-x86_64-unknown-linux-gnu.bc host.bc
-          llc --relocation-model=pic --filetype=obj  kernel.bc
-          llc --relocation-model=pic --filetype=obj  host.bc
-          g++ -o ga -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -I${{ github.workspace }}/cuda-10.1/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc ../common/command_line_option/*.cc  ../common/time_measurement/*.cc -I../.. -lpthread -lc -lx86Runtime -lthreadPool
-      - name: Execute the HIST example
-        run: |
-          cd ${{ github.workspace }}/SC_evaluate/Hetero-cox/src/hist
-          clang++ -std=c++11 cuda/hist_cuda_benchmark.cu -I../.. --cuda-path=${{ github.workspace }}/cuda-10.1  --cuda-gpu-arch=sm_50 -L${{ github.workspace }}/cuda-10.1/lib64 -lcudart_static -ldl -lrt -pthread -save-temps -v  || true
-          export LD_LIBRARY_PATH=${{ github.workspace }}/build/runtime:${{ github.workspace }}/build/runtime/threadPool:$LD_LIBRARY_PATH
-          export PATH=${{ github.workspace }}/build/compilation:$PATH
-          kernelTranslator hist_cuda_benchmark-cuda-nvptx64-nvidia-cuda-sm_50.bc kernel.bc
-          hostTranslator hist_cuda_benchmark-host-x86_64-unknown-linux-gnu.bc host.bc
-          llc --relocation-model=pic --filetype=obj  kernel.bc
-          llc --relocation-model=pic --filetype=obj  host.bc
-          g++ -o hist -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -I${{ github.workspace }}/cuda-10.1/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc ../common/command_line_option/*.cc  ../common/time_measurement/*.cc -I../.. -lpthread -lc -lx86Runtime -lthreadPool
-          ./hist -q -v
-      - name: Execute the KMeans example
-        run: |
-          cd ${{ github.workspace }}/SC_evaluate/Hetero-cox/src/kmeans
-          clang++ -std=c++11 cuda/kmeans_cuda_benchmark.cu -I../.. --cuda-path=${{ github.workspace }}/cuda-10.1  --cuda-gpu-arch=sm_50 -L${{ github.workspace }}/cuda-10.1/lib64 -lcudart_static -ldl -lrt -pthread -save-temps -v  || true
-          export LD_LIBRARY_PATH=${{ github.workspace }}/build/runtime:${{ github.workspace }}/build/runtime/threadPool:$LD_LIBRARY_PATH
-          export PATH=${{ github.workspace }}/build/compilation:$PATH
-          kernelTranslator kmeans_cuda_benchmark-cuda-nvptx64-nvidia-cuda-sm_50.bc kernel.bc
-          hostTranslator kmeans_cuda_benchmark-host-x86_64-unknown-linux-gnu.bc host.bc
-          llc --relocation-model=pic --filetype=obj  kernel.bc
-          llc --relocation-model=pic --filetype=obj  host.bc
-          g++ -o kmeans -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -I${{ github.workspace }}/cuda-10.1/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc ../common/command_line_option/*.cc  ../common/time_measurement/*.cc -I../.. -lpthread -lc -lx86Runtime -lthreadPool
-          ./kmeans -i ../../data/kmeans/100_34.txt -q -v
-      - name: Execute the PR example
-        run: |
-          cd ${{ github.workspace }}/SC_evaluate/Hetero-cox/src/pr
-          clang++ -std=c++11 cuda/pr_cuda_benchmark.cu -I../.. --cuda-path=${{ github.workspace }}/cuda-10.1  --cuda-gpu-arch=sm_50 -L${{ github.workspace }}/cuda-10.1/lib64 -lcudart_static -ldl -lrt -pthread -save-temps -v  || true
-          export LD_LIBRARY_PATH=${{ github.workspace }}/build/runtime:${{ github.workspace }}/build/runtime/threadPool:$LD_LIBRARY_PATH
-          export PATH=${{ github.workspace }}/build/compilation:$PATH
-          kernelTranslator pr_cuda_benchmark-cuda-nvptx64-nvidia-cuda-sm_50.bc kernel.bc
-          hostTranslator pr_cuda_benchmark-host-x86_64-unknown-linux-gnu.bc host.bc
-          llc --relocation-model=pic --filetype=obj  kernel.bc
-          llc --relocation-model=pic --filetype=obj  host.bc
-          g++ -o pr -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -I${{ github.workspace }}/cuda-10.1/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   cuda/main.cc host.o kernel.o *.cc  ../common/benchmark/*.cc ../common/command_line_option/*.cc  ../common/time_measurement/*.cc -I../.. -lpthread -lc -lx86Runtime -lthreadPool
-          ./pr -i ../../data/pr/8192.data -q -v
+          cd ${{ github.workspace }}/build
+          make test
       - name: Execute the lavaMD example
         run: |
           cd ${{ github.workspace }}/SC_evaluate/rodinia-cox/lavaMD
