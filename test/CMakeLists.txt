@@ -13,7 +13,8 @@ foreach(case IN LISTS TESTCASES)
 
   message(STATUS "${CMAKE_BINARY_DIR}")
   find_program(BASH_PROGRAM bash)
-  execute_process(COMMAND find ${CMAKE_CURRENT_SOURCE_DIR}/Hetero-Mark -name "*test.cc" -type f -delete)
+  execute_process(COMMAND find ${CMAKE_CURRENT_SOURCE_DIR}/Hetero-Mark -name
+                          "*test.cc" -type f -delete)
   add_test(
     NAME "${case}"
     COMMAND
