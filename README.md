@@ -43,7 +43,15 @@ For building CUDA toolkit, please refer to <https://developer.nvidia.com/cuda-do
    make
    ```
 
+3. (Optional) Use CuPBoP to execute Hetero-mark benchmark for verification
+
+   ```bash
+   make test
+   ```
+
 ## Run Vector Addition example
+
+In this section, we provide an example of how to use CuPBoP to execute a CUDA program.
 
 ```bash
 cd examples/vecadd
