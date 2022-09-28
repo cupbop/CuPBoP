@@ -104,3 +104,19 @@ papers:
 - Haotian Sheng
 - Blaise Tine
 - [Hyesoon Kim](https://faculty.cc.gatech.edu/~hyesoon/)
+
+## Acknowledgements
+
+- [POCL](http://portablecl.org/) is an open-source
+OpenCL implementations that based on LLVM.
+We reuse some code from it
+(e.g., apply optimizations, load/store LLVM IRs).
+- [Hetero-Mark](https://github.com/NUCAR-DEV/Hetero-Mark)
+and [Rodinia Benchmark](https://github.com/yuhc/gpu-rodinia)
+are two benchmark suites
+for heterogeneous system computation.
+CuPBoP uses them as integrated test to verify the correctness.
+- [moodycamel::ConcurrentQueue](<https://github.com/cameron314/concurrentqueue/tree/master>)
+is a fast multi-producer,
+multi-consumer lock-free concurrent queue for C++11.
+CuPBoP uses it as the task queue for launching and executing kernels.
