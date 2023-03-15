@@ -25,7 +25,7 @@ For building CUDA toolkit, please refer to <https://developer.nvidia.com/cuda-do
 1. Clone from github
 
    ```bash
-   git clone --recursive https://github.com/drcut/CuPBoP
+   git clone --recursive https://github.com/cupbop/CuPBoP
    cd CuPBoP
    export CuPBoP_PATH=`pwd`
    export LD_LIBRARY_PATH=$CuPBoP_PATH/build/runtime:$CuPBoP_PATH/build/runtime/threadPool:$LD_LIBRARY_PATH
