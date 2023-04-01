@@ -30,9 +30,10 @@ void set_meta_data(llvm::Module *M) {
       "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128");
 }
 
+std::vector<int> possible_block_size_list{64, 128, 256, 512, 1024, 2048};
 // as pthread only accept a single void* for input
 // we have to decode this input inside the kernel
-void decode_input(llvm::Module *M) {
+void generate_wrapper_func(llvm::Module *M) {
 
   std::set<llvm::Function *> need_remove;
 
@@ -68,6 +69,7 @@ void decode_input(llvm::Module *M) {
         M->getOrInsertFunction(func_name + "_wrapper", LauncherFuncT);
     Function *WorkGroup = dyn_cast<Function>(fc.getCallee());
 
+    // create the entry block
     BasicBlock *Block = BasicBlock::Create(M->getContext(), "", WorkGroup);
     Builder.SetInsertPoint(Block);
 
@@ -137,8 +139,52 @@ void decode_input(llvm::Module *M) {
       ++idx;
     }
 
-    CallInst *c = Builder.CreateCall(F, ArrayRef<llvm::Value *>(Arguments));
-    Builder.CreateRetVoid();
+    // replace the block_size to constant in the kernel functions,
+    // and use switch to choose to call which function
+
+    BasicBlock *Exit_Block = BasicBlock::Create(M->getContext(), "", WorkGroup);
+    {
+      llvm::IRBuilder<> Builder3(M->getContext());
+      Builder3.SetInsertPoint(Exit_Block);
+      Builder3.CreateRetVoid();
+    }
+
+    auto block_size_global = M->getGlobalVariable("block_size");
+    auto loaded_block_size = Builder.CreateLoad(
+        block_size_global->getType()->getElementType(), block_size_global);
+    BasicBlock *default_call_block =
+        BasicBlock::Create(*C, "default_block_size", WorkGroup);
+    auto default_call_inst = llvm::CallInst::Create(
+        F, ArrayRef<llvm::Value *>(Arguments), "", default_call_block);
+    llvm::BranchInst::Create(Exit_Block, default_call_block);
+    auto switchInst =
+        Builder.CreateSwitch(loaded_block_size, default_call_block);
+
+    for (auto block_size : possible_block_size_list) {
+      // Clone a new function
+      ValueToValueMapTy EmptyMap;
+      Function *Clone = CloneFunction(F, EmptyMap);
+      Clone->setName(F->getName() + "_block_size_" +
+                     std::to_string(block_size));
+      // replace all reference to block_size to a constant
+      ConstantInt *block_constant =
+          dyn_cast<ConstantInt>(ConstantInt::get(Int32T, block_size, true));
+      std::vector<llvm::Value *> Users(block_size_global->user_begin(),
+                                       block_size_global->user_end());
+      for (auto *U : Users) {
+        if (auto *loadInst = llvm::dyn_cast<llvm::LoadInst>(U))
+          if (loadInst->getParent()->getParent() == Clone) {
+            loadInst->replaceAllUsesWith(block_constant);
+          }
+      }
+      BasicBlock *possible_call_block = BasicBlock::Create(
+          *C, "block_size_" + std::to_string(block_size), WorkGroup);
+      auto call_inst = llvm::CallInst::Create(
+          Clone, ArrayRef<llvm::Value *>(Arguments), "", possible_call_block);
+      auto branch_inst =
+          llvm::BranchInst::Create(Exit_Block, possible_call_block);
+      switchInst->addCase(block_constant, possible_call_block);
+    }
   }
   for (auto f : need_remove) {
     f->dropAllReferences();
@@ -177,8 +223,8 @@ void generate_x86_format(llvm::Module *M) {
   DEBUG_INFO("generate x86 format\n");
   // change metadata
   set_meta_data(M);
-  // decode argument
-  decode_input(M);
+  // generate wrapper func for the kernel functions
+  generate_wrapper_func(M);
   // remove barrier
   remove_barrier(M);
   // remove useless func/variable
