@@ -30,7 +30,7 @@ void set_meta_data(llvm::Module *M) {
       "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128");
 }
 
-std::vector<int> possible_block_size_list{64, 128, 256, 512, 1024, 2048};
+std::vector<int> possible_block_size_list{16, 32, 64, 128, 256, 512};
 // as pthread only accept a single void* for input
 // we have to decode this input inside the kernel
 void generate_wrapper_func(llvm::Module *M) {
@@ -138,6 +138,25 @@ void generate_wrapper_func(llvm::Module *M) {
       Arguments.push_back(Arg);
       ++idx;
     }
+    /*
+    {
+      // hard code mode: replace block size to 64
+          // replace all reference to block_size to a constant
+          auto block_size_global = M->getGlobalVariable("block_size");
+    ConstantInt *block_constant =
+        dyn_cast<ConstantInt>(ConstantInt::get(Int32T, 256, true));
+    std::vector<llvm::Value *> Users(block_size_global->user_begin(),
+                                     block_size_global->user_end());
+    for (auto *U : Users) {
+      if (auto *loadInst = llvm::dyn_cast<llvm::LoadInst>(U))
+        if (loadInst->getParent()->getParent() == F) {
+          loadInst->replaceAllUsesWith(block_constant);
+        }
+    }
+   CallInst *c = Builder.CreateCall(F, ArrayRef<llvm::Value *>(Arguments));
+    Builder.CreateRetVoid();
+    }
+    */
 
     // replace the block_size to constant in the kernel functions,
     // and use switch to choose to call which function
