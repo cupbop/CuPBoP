@@ -1,4 +1,5 @@
 #include "generate_x86_format.h"
+#include "global_mem_coalescing_optimization.h"
 #include "handle_sync.h"
 #include "init.h"
 #include "insert_sync.h"
@@ -34,6 +35,10 @@ int main(int argc, char **argv) {
 
   // replace warp shuffle
   handle_warp_shfl(program);
+
+  // global memory access coalescing optimization
+  global_mem_coalescing_optimization(program);
+  VerifyModule(program);
 
   // insert sync
   insert_sync(program);
