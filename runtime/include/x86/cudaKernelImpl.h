@@ -6,8 +6,12 @@ extern "C" {
 double __nv_exp(double);
 double __nv_sqrt(double);
 float __nv_sqrtf(float);
+float __nvvm_fabs_f(float);
 float __nv_powif(float, int);
 float __nv_logf(float);
+float __nv_floorf(float);
+float __nv_sinf(float);
+float __nv_cosf(float);
 float __nv_expf(float);
 float __nv_log10f(float);
 float __nv_fast_log2f(float);
@@ -24,5 +28,6 @@ double __nv_fmaxd(double, double);
 int __nvvm_mul24_i(int, int);
 double _ZL3expd(double);
 double _ZL8copysigndd(double, double);
+double __nv_log(double);
 }
 #endif

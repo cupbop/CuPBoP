@@ -487,11 +487,13 @@ void replace_built_in_function(llvm::Module *M) {
                        func_name == "__nv_fast_powf" ||
                        func_name == "__nv_powf" || func_name == "__nv_logf" ||
                        func_name == "__nv_expf" || func_name == "__nv_fabsf" ||
-                       func_name == "__nv_log10f" ||
+                       func_name == "__nv_log10f" || func_name == "__nv_log" ||
                        func_name == "__nv_fmodf" || func_name == "__nv_sqrt" ||
                        func_name == "__nv_sqrtf" || func_name == "__nv_exp" ||
-                       func_name == "__nv_isnanf" ||
+                       func_name == "__nv_floorf" || func_name == "__nv_cosf" ||
+                       func_name == "__nv_isnanf" || func_name == "__nv_sinf" ||
                        func_name == "__nv_isinff" || func_name == "__nv_powi" ||
+                       func_name == "__nvvm_fabs_f" ||
                        func_name == "__nv_powif") {
               Call->getCalledFunction()->deleteBody();
             } else if (func_name == "llvm.nvvm.fma.rn.d") {

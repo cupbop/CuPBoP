@@ -5,9 +5,14 @@ double __nv_sqrt(double v) { return sqrt(v); }
 float __nv_sqrtf(float v) { return sqrt(v); }
 float __nv_powif(float base, int exp) { return pow(base, exp); }
 float __nv_logf(float v) { return logf(v); }
+double __nv_log(double v) { return log(v); }
 float __nv_expf(float v) { return expf(v); }
 float __nv_log10f(float v) { return log10f(v); }
 float __nv_fast_log2f(float v) { return log2f(v); }
+float __nv_floorf(float v) { return floor(v); }
+float __nv_sinf(float v) { return sin(v); };
+float __nv_cosf(float v) { return cos(v); };
+float __nvvm_fabs_f(float v) { return abs(v); }
 double __nv_powi(double base, int exp) { return pow(base, exp); }
 float __nv_powf(float base, float exp) { return pow(base, exp); }
 float __nv_fast_powf(float base, float exp) { return pow(base, exp); }
