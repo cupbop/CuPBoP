@@ -2,26 +2,11 @@
 #include "debug.hpp"
 #include "memory_hierarchy.h"
 #include "tool.h"
-#include <fstream>
-#include <iostream>
-#include <set>
-
-#include "llvm/IR/Function.h"
-#include "llvm/IR/GlobalValue.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/InlineAsm.h"
-#include "llvm/IR/Instructions.h"
-#include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/LegacyPassManager.h"
-#include "llvm/IR/Module.h"
 #include "llvm/InitializePasses.h"
-#include "llvm/PassInfo.h"
-#include "llvm/PassRegistry.h"
-#include "llvm/Support/CommandLine.h"
 #include "llvm/Support/TargetSelect.h"
-#include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Transforms/Utils/Cloning.h"
-#include "llvm/Transforms/Utils/ValueMapper.h"
+#include <set>
 
 using namespace llvm;
 
@@ -31,11 +16,9 @@ bool inline_warp_level_func(llvm::Module *M) {
 
   for (Module::iterator i = M->begin(), e = M->end(); i != e; ++i) {
     Function *F = &(*i);
-    auto func_name = F->getName().str();
     if (!isKernelFunction(M, F))
       continue;
-    Function::iterator I = F->begin();
-    for (Function::iterator E = F->end(); I != E; ++I) {
+    for (Function::iterator I = F->begin(), E = F->end(); I != E; ++I) {
       for (BasicBlock::iterator BI = I->begin(), BE = I->end(); BI != BE;) {
         if (CallInst *c = dyn_cast<CallInst>(BI++)) {
           if (c->getCalledFunction()) {
@@ -60,8 +43,7 @@ bool inline_warp_level_func(llvm::Module *M) {
 }
 
 bool find_sreg_inst(llvm::Function *F) {
-  Function::iterator I = F->begin();
-  for (Function::iterator E = F->end(); I != E; ++I) {
+  for (Function::iterator I = F->begin(), E = F->end(); I != E; ++I) {
     for (BasicBlock::iterator BI = I->begin(), BE = I->end(); BI != BE;) {
       if (CallInst *c = dyn_cast<CallInst>(BI++)) {
         if (c->getCalledFunction()) {
@@ -229,14 +211,12 @@ void llvm_preprocess(llvm::Module *M) {
   Passes.run(*M);
 }
 
+// transform constant expression into sequence of instructions
 bool lower_constant_expr(llvm::Module *M) {
   bool modified = false;
-  LLVMContext &context = M->getContext();
-  auto I32 = llvm::Type::getInt32Ty(context);
   std::vector<CallInst *> need_remove;
   for (Module::iterator i = M->begin(), e = M->end(); i != e; ++i) {
     Function *F = &(*i);
-    auto func_name = F->getName().str();
     if (!isKernelFunction(M, F))
       continue;
 
@@ -301,8 +281,8 @@ bool lower_constant_expr(llvm::Module *M) {
   return modified;
 }
 
+// replace _ZL3expd, just delete its body
 void replace_cuda_math_built_in(llvm::Module *M) {
-  // replace _ZL3expd, just delete its body
   for (Module::iterator i = M->begin(), e = M->end(); i != e; ++i) {
     Function *F = &(*i);
     auto func_name = F->getName().str();

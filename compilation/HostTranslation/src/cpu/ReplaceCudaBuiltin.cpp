@@ -1,13 +1,6 @@
 #include "ReplaceCudaBuiltin.h"
 #include "debug.hpp"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/Instructions.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
-#include "llvm/Support/ToolOutputFile.h"
-#include <iostream>
 #include <map>
 #include <regex>
 #include <set>
@@ -63,18 +56,6 @@ void ReplaceKernelLaunch(llvm::Module *M) {
   std::map<std::string, Function *> kernels;
 
   std::set<llvm::Function *> need_remove;
-  LLVMContext *C = &M->getContext();
-
-  llvm::Type *Int32T = Type::getInt32Ty(*C);
-  llvm::Type *Int8T = Type::getInt8Ty(*C);
-
-  llvm::FunctionType *LauncherFuncT =
-      FunctionType::get(Type::getVoidTy(*C), NULL);
-
-  llvm::FunctionType *LaunchFun2 =
-      FunctionType::get(PointerType::get(PointerType::get(Int32T, 0), 0), NULL);
-
-  bool done = false;
 
   std::set<std::string> cuda_register_kernel_names;
 
@@ -160,8 +141,6 @@ void ReplaceKernelLaunch(llvm::Module *M) {
                 std::vector<size_t> arg_sizes;
                 functionOperand =
                     dyn_cast<Function>(callOperand->stripPointerCasts());
-
-                FunctionType *ft = calledFunction->getFunctionType();
                 DEBUG_INFO("Parent (Caller) Function Name: %s, "
                            "cudaLaunchKernel Function: %s, args : %d\n",
                            func_name.c_str(),

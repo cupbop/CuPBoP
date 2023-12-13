@@ -1,29 +1,10 @@
 #include "memory_hierarchy.h"
 #include "debug.hpp"
-#include "llvm/IR/CFG.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/GlobalValue.h"
-#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instructions.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
-#include "llvm/Transforms/Utils/Cloning.h"
-#include "llvm/Transforms/Utils/ValueMapper.h"
-#include <assert.h>
-#include <fstream>
-#include <iostream>
 #include <map>
 #include <set>
-#include <sstream>
-#include <tuple>
-#include <vector>
 
 void mem_share2global(llvm::Module *M) {
-  LLVMContext *C = &M->getContext();
-  llvm::Type *Int32T = Type::getInt32Ty(*C);
-  llvm::Type *Int64T = Type::getInt64Ty(*C);
-  llvm::Type *Int8T = Type::getInt8Ty(*C);
-
   std::map<GlobalVariable *, GlobalVariable *> corresponding_global_memory;
   std::set<llvm::Instruction *> need_remove;
   std::set<GlobalVariable *> need_remove_share_memory;
@@ -45,7 +26,6 @@ void mem_share2global(llvm::Module *M) {
               // generate global type pointer
               PointerType *PointerTy =
                   PointerType::get(array_type->getElementType(), 0);
-              llvm::Constant *x1 = ConstantPointerNull::get(PointerTy);
               llvm::GlobalVariable *global_ptr = new llvm::GlobalVariable(
                   *M, PointerTy, false, llvm::GlobalValue::ExternalLinkage,
                   NULL, "dynamic_shared_memory", NULL,
@@ -75,7 +55,7 @@ void mem_share2global(llvm::Module *M) {
                 std::pair<GlobalVariable *, GlobalVariable *>(share_memory,
                                                               global_memory));
           } else if (element_type->isFloatTy()) {
-            auto FP_type = llvm::Type::getFloatTy(*C);
+            auto FP_type = llvm::Type::getFloatTy(M->getContext());
             auto zero = llvm::ConstantFP::get(FP_type, 0);
             llvm::GlobalVariable *global_memory = new llvm::GlobalVariable(
                 *M, FP_type, false, llvm::GlobalValue::ExternalLinkage, zero,
@@ -128,11 +108,6 @@ void mem_share2global(llvm::Module *M) {
 }
 
 void mem_constant2global(llvm::Module *M, std::ofstream &fout) {
-  LLVMContext *C = &M->getContext();
-  llvm::Type *Int32T = Type::getInt32Ty(*C);
-  llvm::Type *Int64T = Type::getInt64Ty(*C);
-  llvm::Type *Int8T = Type::getInt8Ty(*C);
-
   std::map<GlobalVariable *, GlobalVariable *> corresponding_global_memory;
   std::set<llvm::Instruction *> need_remove;
   std::set<GlobalVariable *> need_remove_constant_memory;
@@ -142,7 +117,7 @@ void mem_constant2global(llvm::Module *M, std::ofstream &fout) {
     if (GlobalVariable *constant_memory = dyn_cast<GlobalVariable>(I)) {
       if (auto PT = dyn_cast<PointerType>(I->getType())) {
         unsigned AS = PT->getAddressSpace();
-        if (AS == 4) { // find a share memory
+        if (AS == 4) { // find a constant memory
           need_remove_constant_memory.insert(constant_memory);
           // generate the corresponding global memory variable
           auto new_name = "wrapper_global_" + constant_memory->getName().str();
@@ -150,7 +125,7 @@ void mem_constant2global(llvm::Module *M, std::ofstream &fout) {
           if (auto array_type = dyn_cast<ArrayType>(element_type)) {
             if (constant_memory->hasExternalLinkage() &&
                 array_type->getArrayNumElements() == 0) {
-              // external shared memory of []
+              // external constant memory of []
               // generate global type pointer
               PointerType *PointerTy =
                   PointerType::get(array_type->getElementType(), 0);

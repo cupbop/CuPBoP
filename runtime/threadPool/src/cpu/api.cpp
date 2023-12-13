@@ -1,3 +1,19 @@
+/*
+  This file contains the implementation of the CPU thread pool. For a kernel
+  launch, the host thread will enqueue the kernel to the kernelQueue, and the
+  threads in the thread pool will try to fetch work from the queue. After a
+  thread fetches a kernel from the queue, it will execute the kernel. After the
+  kernel execution, the thread will try to fetch another kernel from the queue.
+  If the queue is empty, the thread will wait for the next kernel launch.
+
+  By default, we try to use all CPU cores for execution. Thus, for a kernel
+  launch, the host thread pushes P kernel variables to the queue, where P is the
+  number of CPU cores.
+
+  For some lightweight kernels, useing fewer CPU cores can speed up the overall
+  execution time, due to fewer CPU cores lead to lower synchronization overhead.
+*/
+
 #include "api.h"
 #include "blockingconcurrentqueue.h"
 #include "debug.hpp"
@@ -9,9 +25,6 @@
 #include <stdlib.h>
 #include <thread>
 
-/*
-Initialize the device
-*/
 int device_max_compute_units = 1;
 bool device_initilized = false;
 int init_device() {
@@ -32,7 +45,6 @@ int init_device() {
 }
 
 // Create Kernel
-static int kernelIds = 0;
 cu_kernel *create_kernel(const void *func, dim3 gridDim, dim3 blockDim,
                          void **args, size_t sharedMem, cudaStream_t stream) {
   cu_kernel *ker = (cu_kernel *)calloc(1, sizeof(cu_kernel));
@@ -71,13 +83,11 @@ __thread int warp_shfl[32] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
 
-/*
-    Enqueue Kernel (k) to the scheduler kernelQueue
-*/
 int TaskToExecute;
+// Enqueue Kernel to the scheduler kernelQueue
 int schedulerEnqueueKernel(cu_kernel *k) {
-  int totalBlocks =
-      k->totalBlocks; // calculate gpu_block_to_execute_per_cpu_thread
+  int totalBlocks = k->totalBlocks;
+  // by default, all CPU cores are used to execute GPU blocks equally
   int gpuBlockToExecutePerCpuThread =
       (totalBlocks + device_max_compute_units - 1) / device_max_compute_units;
   TaskToExecute = (totalBlocks + gpuBlockToExecutePerCpuThread - 1) /
@@ -93,28 +103,21 @@ int schedulerEnqueueKernel(cu_kernel *k) {
   return C_SUCCESS;
 }
 
-/*
-  Kernel Launch with numBlocks and numThreadsPerBlock
-*/
+// Push kernel to the kernelQueue
 int cuLaunchKernel(cu_kernel **k) {
   if (!device_initilized) {
     init_device();
   }
-  // Calculate Block Size N/numBlocks
-  cu_kernel *ker = *k;
-  int status = C_RUN;
   // set complete to false, this variable is used for sync
   for (int i = 0; i < scheduler->num_worker_threads; i++) {
     scheduler->thread_pool[i].completeTask = 0;
   }
-  schedulerEnqueueKernel(ker);
+  schedulerEnqueueKernel(*k);
 
   return 0;
 }
 
-/*
-    Thread Gets Work
-*/
+// threads in thread-pool try to fetch work from the queue
 int get_work(c_thread *th) {
   int dynamic_shared_mem_size = 0;
   dim3 gridDim;
@@ -136,6 +139,7 @@ int get_work(c_thread *th) {
       grid_size_x = gridDim.x;
       grid_size_y = gridDim.y;
       grid_size_z = gridDim.z;
+      // allocate dynamic shared memory
       if (dynamic_shared_mem_size > 0)
         dynamic_shared_memory = (int *)malloc(dynamic_shared_mem_size);
       // execute GPU blocks
@@ -153,7 +157,8 @@ int get_work(c_thread *th) {
     }
     // if cannot get tasks, check whether programs stop
     if (scheduler->threadpool_shutdown_requested) {
-      return true; // thread exit
+      // thread exit
+      break;
     }
   }
   return 0;
@@ -176,9 +181,7 @@ void *driver_thread(void *p) {
   }
 }
 
-/*
-Initialize the scheduler
-*/
+// Initialize the scheduler
 int scheduler_init(cu_device device) {
   scheduler = (cu_pool *)calloc(1, sizeof(cu_pool));
   scheduler->num_worker_threads = device.max_compute_units;
@@ -197,8 +200,6 @@ int scheduler_init(cu_device device) {
 
   return C_SUCCESS;
 }
-
-void scheduler_uninit() { assert(0 && "Scheduler Unitit no Implemente\n"); }
 
 /*
   Barrier for Kernel Launch

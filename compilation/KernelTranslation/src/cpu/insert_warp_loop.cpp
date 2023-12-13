@@ -4,43 +4,20 @@
 #include "handle_sync.h"
 #include "tool.h"
 #include <assert.h>
-#include <iostream>
 #include <set>
 
-#include "llvm/ADT/Statistic.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Analysis/DivergenceAnalysis.h"
-#include "llvm/Analysis/LoopInfo.h"
-#include "llvm/Analysis/LoopPass.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
-#include "llvm/IR/CFG.h"
-#include "llvm/IR/DataLayout.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/GlobalValue.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/InlineAsm.h"
-#include "llvm/IR/Instructions.h"
-#include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/LegacyPassManager.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/ValueSymbolTable.h"
-#include "llvm/InitializePasses.h"
 #include "llvm/MC/TargetRegistry.h"
-#include "llvm/PassInfo.h"
-#include "llvm/PassRegistry.h"
-#include "llvm/Support/CommandLine.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
-#include "llvm/Transforms/Utils/BasicBlockUtils.h"
-#include "llvm/Transforms/Utils/Cloning.h"
-#include "llvm/Transforms/Utils/ValueMapper.h"
 #include <map>
 #include <set>
 #include <sstream>
-#include <tuple>
-#include <vector>
 
 using namespace llvm;
 
@@ -115,10 +92,7 @@ llvm::Instruction *GetContextArray(llvm::Instruction *instruction,
   BasicBlock &bb = instruction->getParent()->getParent()->getEntryBlock();
 
   IRBuilder<> builder(&*(bb.getFirstInsertionPt()));
-  Function *FF = instruction->getParent()->getParent();
   Module *M = instruction->getParent()->getParent()->getParent();
-  LLVMContext &C = M->getContext();
-  const llvm::DataLayout &Layout = M->getDataLayout();
 
   llvm::Type *elementType;
   if (isa<AllocaInst>(instruction)) {
@@ -129,8 +103,6 @@ llvm::Instruction *GetContextArray(llvm::Instruction *instruction,
   }
 
   Type *AllocType = elementType;
-  AllocaInst *InstCast = dyn_cast<AllocaInst>(instruction);
-  llvm::Value *ItemSize = nullptr;
   llvm::AllocaInst *Alloca = nullptr;
 
   auto block_size_addr = M->getGlobalVariable("block_size");
@@ -697,9 +669,6 @@ public:
             is_single_conditional_branch_block = 1;
           } else {
             // generate by replicate local variable
-            printf(
-                "[WARNING] match single conditional branch with HARD CODE\n");
-            bool branch_to_intra_init = false;
             for (unsigned suc = 0; suc < br->getNumSuccessors(); ++suc) {
               llvm::BasicBlock *entryCandidate = br->getSuccessor(suc);
               auto block_name = entryCandidate->getName().str();
@@ -755,7 +724,7 @@ public:
       entry = entryCandidate;
       break;
     }
-    // delete useless PR, those PRs only have branch
+    // delete useless PR, those PRs only have branch instructions
     if (entry == exit) {
       if (entry->size() == 1 && isa<llvm::BranchInst>(entry->begin())) {
         return;

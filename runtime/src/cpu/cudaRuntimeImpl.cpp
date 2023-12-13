@@ -10,27 +10,31 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 cudaError_t cudaGetDevice(int *devPtr) {
   *devPtr = 0;
   return cudaSuccess;
 }
+
 const char *cudaGetErrorName(cudaError_t error) { return "SUCCESS\n"; }
-cudaError_t cudaDeviceReset(void) {
-  scheduler_uninit();
-  return cudaSuccess;
-}
+
+cudaError_t cudaDeviceReset(void) { return cudaSuccess; }
+
 cudaError_t cudaDeviceSynchronize(void) {
   cuSynchronizeBarrier();
   return cudaSuccess;
 }
+
 cudaError_t cudaThreadSynchronize(void) {
   cuSynchronizeBarrier();
   return cudaSuccess;
 }
+
 cudaError_t cudaFree(void *devPtr) {
   free(devPtr);
   return cudaSuccess;
 }
+
 cudaError_t cudaFreeHost(void *devPtr) {
   free(devPtr);
   return cudaSuccess;
@@ -47,20 +51,22 @@ cudaError_t cudaLaunchKernel(const void *func, dim3 gridDim, dim3 blockDim,
   cu_kernel *ker =
       create_kernel(func, gridDim, blockDim, args, sharedMem, stream);
 
-  int lstatus = cuLaunchKernel(&ker);
-
+  cuLaunchKernel(&ker);
   return cudaSuccess;
 }
+
 cudaError_t cudaMalloc(void **devPtr, size_t size) {
   *devPtr = malloc(size);
   if (devPtr == NULL)
     return cudaErrorMemoryAllocation;
   return cudaSuccess;
 }
+
 cudaError_t cudaMemset(void *devPtr, int value, size_t count) {
   memset(devPtr, value, count);
   return cudaSuccess;
 }
+
 cudaError_t cudaMemcpy(void *dst, const void *src, size_t count,
                        cudaMemcpyKind kind) {
   if (kind == cudaMemcpyHostToHost) {
@@ -105,7 +111,6 @@ cudaError_t cudaStreamCopyAttributes(cudaStream_t dst, cudaStream_t src) {
   return cudaSuccess;
 }
 
-static int stream_counter = 1;
 /*
 From our evaluation, CPU backend can gain little benefit
 from multi stream. Thus, we only use single stream
@@ -159,6 +164,8 @@ static cudaError_t lastError = cudaSuccess;
 const char *cudaGetErrorString(cudaError_t error) {
   if (error == cudaSuccess) {
     return "Cuda Get Error Success";
+  } else {
+    return "Cuda Get Error Failed";
   }
 }
 

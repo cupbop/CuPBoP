@@ -1,12 +1,7 @@
 #include "ReplaceConstantMemory.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/Instructions.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
 #include <assert.h>
 #include <fstream>
-#include <iostream>
 #include <map>
 #include <set>
 

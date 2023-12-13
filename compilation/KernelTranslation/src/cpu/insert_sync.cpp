@@ -4,29 +4,9 @@
 #include "handle_sync.h"
 #include "tool.h"
 #include "llvm/ADT/SmallVector.h"
-#include "llvm/ADT/Statistic.h"
-#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/LoopPass.h"
 #include "llvm/Analysis/PostDominators.h"
-#include "llvm/IR/DataLayout.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/GlobalValue.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/InlineAsm.h"
-#include "llvm/IR/Instructions.h"
-#include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/LegacyPassManager.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/ValueSymbolTable.h"
-#include "llvm/InitializePasses.h"
-#include "llvm/PassInfo.h"
-#include "llvm/PassRegistry.h"
-#include "llvm/Support/CommandLine.h"
-#include "llvm/Transforms/IPO/PassManagerBuilder.h"
-#include "llvm/Transforms/Utils/BasicBlockUtils.h"
-#include "llvm/Transforms/Utils/Cloning.h"
-#include "llvm/Transforms/Utils/ValueMapper.h"
-#include <iostream>
 #include <queue>
 
 using namespace llvm;
@@ -44,7 +24,7 @@ public:
     std::vector<llvm::Instruction *> insert_intra_warp_sync_before;
     std::vector<llvm::Instruction *> insert_inter_warp_sync_before;
 
-    // insert sync in the entry
+    // insert sync after the entry and before the first non-AllocaInst
     BasicBlock *entry = &(*F.begin());
     for (auto i = entry->begin(); i != entry->end(); i++) {
       if (!isa<AllocaInst>(i)) {
@@ -54,10 +34,8 @@ public:
     }
 
     for (Function::iterator I = F.begin(); I != F.end(); ++I) {
-      BasicBlock::iterator BI = I->begin();
-
       // insert barrier before return
-      for (; BI != I->end(); BI++) {
+      for (BasicBlock::iterator BI = I->begin(); BI != I->end(); BI++) {
         llvm::ReturnInst *Ret = llvm::dyn_cast<llvm::ReturnInst>(&(*BI));
         if (Ret) {
           insert_inter_warp_sync_before.push_back(&(*BI));
@@ -125,7 +103,7 @@ public:
 
     auto PDT = &getAnalysis<PostDominatorTreeWrapperPass>();
 
-    // first find all conditional barriers
+    // find all conditional barriers
     std::vector<BasicBlock *> conditionalBarriers;
     for (Function::iterator i = F.begin(), e = F.end(); i != e; ++i) {
       BasicBlock *b = &*i;
@@ -148,12 +126,9 @@ public:
       conditionalBarriers.pop_back();
 
       // insert barrier in the start of if-condition
-
-      BasicBlock *pos = b;
       BasicBlock *pred = firstNonBackedgePredecessor(b);
 
       while (PDT->getPostDomTree().dominates(b, pred)) {
-        pos = pred;
         // If our BB post dominates the given block, we know it is not the
         // branching block that makes the barrier conditional.
         pred = firstNonBackedgePredecessor(pred);
@@ -468,7 +443,6 @@ public:
       auto header_block = L->getHeader();
       assert(header_block->getTerminator()->getNumSuccessors() == 2 &&
              "has more than 2 successors of the for-head\n");
-      BasicBlock *for_body = NULL;
       for (int i = 0; i < header_block->getTerminator()->getNumSuccessors();
            i++) {
         auto bb = header_block->getTerminator()->getSuccessor(i);

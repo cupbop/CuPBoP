@@ -1,4 +1,4 @@
-#include "generate_x86_format.h"
+#include "generate_cpu_format.h"
 #include "handle_sync.h"
 #include "init.h"
 #include "insert_sync.h"
@@ -6,17 +6,14 @@
 #include "performance.h"
 #include "tool.h"
 #include "warp_func.h"
-#include "llvm/IR/Module.h"
 #include <assert.h>
-#include <fstream>
-#include <iostream>
-#include <llvm/Support/raw_ostream.h>
-#include <map>
-#include <set>
-#include <stdlib.h>
 
 using namespace llvm;
 
+// to support constant memory variables, we need to convert information
+// from kernelTranslator to HostTranslator, since HostTranslator knows nothing
+// about the kernel functions, we need to write the information to a file
+// by KernelTranslator and read it in HostTranslator
 std::string PATH = "kernel_meta.log";
 
 int main(int argc, char **argv) {
@@ -26,8 +23,9 @@ int main(int argc, char **argv) {
   std::ofstream fout;
   fout.open(PATH);
 
-  // inline, and create auxiliary global variables
+  // inline __device__ functions, and create auxiliary global variables
   init_block(program, fout);
+
   // insert sync before each vote, and replace the
   // original vote function to warp vote
   handle_warp_vote(program);
@@ -40,17 +38,18 @@ int main(int argc, char **argv) {
 
   // split block by sync
   split_block_by_sync(program);
-  // add loop for intra&intera thread
+
+  // add loop for intra&intera thread, it refers 'hierarchical collapsing' in
+  // COX paper.
   insert_warp_loop(program);
 
-  // (TODO): replace this patch
   replace_built_in_function(program);
 
-  // TODO: replace with a more general function
-  // Not only for x86 backend
-  generate_x86_format(program);
+  // the input kernel programs have NVIDIA metadata, they need to be replaced to
+  // CPU metadata
+  generate_cpu_format(program);
 
-  // performance optimization
+  // execute O3 pipeline on the transformed program
   performance_optimization(program);
 
   VerifyModule(program);

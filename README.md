@@ -75,7 +75,7 @@ g++ -o vecadd -fPIC -no-pie \
       -L$CuPBoP_PATH/build/runtime  \
       -L$CuPBoP_PATH/build/runtime/threadPool \
       host.o kernel.o \
-      -I../.. -lc -lx86Runtime -lthreadPool -lpthread
+      -I../.. -lc -lCPUruntime -lthreadPool -lpthread
 # Execute
 ./vecadd
 ```

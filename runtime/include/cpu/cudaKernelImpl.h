@@ -1,4 +1,4 @@
-#ifndef __RUNTIME_IMPL__
+#ifndef __KERNEL_IMPL__
 #define __KERNEL_IMPL__
 #include "structures.h"
 #include <stdint.h>

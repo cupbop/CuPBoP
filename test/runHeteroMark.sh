@@ -30,7 +30,7 @@ g++ -o $1 -fPIC -no-pie \
     $HeteroMark_PATH/src/$1/cuda/main.cc host.o kernel.o $HeteroMark_PATH/src/$1/*.cc  $HeteroMark_PATH/src/common/benchmark/*.cc \
     $HeteroMark_PATH/src/common/command_line_option/*.cc  $HeteroMark_PATH/src/common/time_measurement/*.cc \
     -L$CuPBoP_BUILD_PATH/runtime   -L$CuPBoP_BUILD_PATH/runtime/threadPool \
-    -I$HeteroMark_PATH -I$CUDA_PATH/include -lpthread -lc -lx86Runtime -lthreadPool
+    -I$HeteroMark_PATH -I$CUDA_PATH/include -lpthread -lc -lCPUruntime -lthreadPool
 
 case $1 in
   aes)

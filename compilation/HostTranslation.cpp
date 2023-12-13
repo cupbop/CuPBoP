@@ -4,12 +4,7 @@
 #include "ReplaceCudaBuiltin.h"
 #include "ReplaceKernelArgs.h"
 #include "tool.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Verifier.h"
 #include <assert.h>
-#include <fstream>
-#include <iostream>
-#include <stdlib.h>
 
 using namespace llvm;
 

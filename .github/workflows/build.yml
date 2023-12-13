@@ -51,7 +51,7 @@ jobs:
           hostTranslator reverse-host-x86_64-unknown-linux-gnu.bc host.bc
           llc --relocation-model=pic --filetype=obj  kernel.bc
           llc --relocation-model=pic --filetype=obj  host.bc
-          g++ -o reverse -fPIC -no-pie -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   host.o kernel.o -lc -lx86Runtime -lthreadPool -lpthread
+          g++ -o reverse -fPIC -no-pie -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   host.o kernel.o -lc -lCPUruntime -lthreadPool -lpthread
           ./reverse
       - name: Execute the dynamic shared memory demo
         run: |
@@ -63,7 +63,7 @@ jobs:
           hostTranslator reverse-host-x86_64-unknown-linux-gnu.bc host.bc
           llc --relocation-model=pic --filetype=obj  kernel.bc
           llc --relocation-model=pic --filetype=obj  host.bc
-          g++ -o reverse -fPIC -no-pie -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   host.o kernel.o -lc -lx86Runtime -lthreadPool -lpthread
+          g++ -o reverse -fPIC -no-pie -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   host.o kernel.o -lc -lCPUruntime -lthreadPool -lpthread
           ./reverse
       - name: Execute Hetero-mark benchmark
         run: |
@@ -79,5 +79,5 @@ jobs:
           hostTranslator kernel_gpu_cuda_wrapper-host-x86_64-unknown-linux-gnu.bc host.bc
           llc --relocation-model=pic --filetype=obj  kernel.bc
           llc --relocation-model=pic --filetype=obj  host.bc
-          g++ -o lavaMD -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -I${{ github.workspace }}/cuda-10.1/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   main.c host.o kernel.o util/timer/timer.c util/num/num.c -lpthread -lc -lx86Runtime -lthreadPool -pthread
+          g++ -o lavaMD -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -I${{ github.workspace }}/cuda-10.1/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   main.c host.o kernel.o util/timer/timer.c util/num/num.c -lpthread -lc -lCPUruntime -lthreadPool -pthread
           ./lavaMD -boxes1d 10

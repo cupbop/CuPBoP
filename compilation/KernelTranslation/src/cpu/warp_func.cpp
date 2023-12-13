@@ -2,15 +2,6 @@
 #include "warp_func.h"
 #include "debug.hpp"
 #include "tool.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/GlobalValue.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/Instructions.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
-#include "llvm/Transforms/Utils/Cloning.h"
-#include "llvm/Transforms/Utils/ValueMapper.h"
-#include <iostream>
 #include <set>
 
 using namespace llvm;
@@ -107,7 +98,7 @@ void handle_warp_vote(llvm::Module *M) {
       res = BinaryOperator::CreateNot(res, "", sync_inst);
     }
 
-    auto sotre_mask = new llvm::StoreInst(res, GEP, "", sync_inst);
+    new llvm::StoreInst(res, GEP, "", sync_inst);
     // create barrier
     CreateIntraWarpBarrier(sync_inst);
     /*

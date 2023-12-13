@@ -1,12 +1,5 @@
 #include "ReplaceKernelArgs.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/Instructions.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
-#include "llvm/Support/ToolOutputFile.h"
-#include <iostream>
 #include <map>
 #include <set>
 
@@ -23,12 +16,9 @@ using namespace llvm;
 // to use use-analysis to find the arguments in the future
 void ReplaceKernelArg(llvm::Module *M) {
   LLVMContext &context = M->getContext();
-  auto VoidTy = llvm::Type::getVoidTy(context);
-  auto I8 = llvm::Type::getInt8PtrTy(context);
   std::map<std::string, Function *> kernels;
 
   std::set<llvm::Function *> need_replace;
-  LLVMContext *C = &M->getContext();
 
   for (Module::iterator i = M->begin(), e = M->end(); i != e; ++i) {
     Function *F = &(*i);

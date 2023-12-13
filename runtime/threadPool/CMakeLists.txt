@@ -10,11 +10,10 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 set(LIB_NAME threadPool)
 
 set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_BUILD_TYPE Debug)
 include_directories(../../common)
 include_directories(./include)
-include_directories(./include/x86)
+include_directories(./include/cpu)
 include_directories(../../external/moodycamel)
 
-file(GLOB proj_SOURCES "src/x86/*.cpp")
+file(GLOB proj_SOURCES "src/cpu/*.cpp")
 add_library(${LIB_NAME} SHARED ${proj_SOURCES})

@@ -1,29 +1,13 @@
 #include "tool.h"
 #include "debug.hpp"
 #include "llvm/Bitcode/BitcodeWriter.h"
-#include "llvm/Config/llvm-config.h"
-#include "llvm/IR/Constants.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/GlobalValue.h"
-#include "llvm/IR/GlobalVariable.h"
-#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InlineAsm.h"
-#include "llvm/IR/Instructions.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IRReader/IRReader.h"
-#include "llvm/Support/CommandLine.h"
-#include "llvm/Support/ErrorOr.h"
 #include "llvm/Support/FileSystem.h"
-#include "llvm/Support/ManagedStatic.h"
-#include "llvm/Support/MemoryBuffer.h"
+#include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/ToolOutputFile.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/Transforms/Utils/Cloning.h"
-#include "llvm/Transforms/Utils/ValueMapper.h"
-
-#include <iostream>
 #include <set>
 
 using namespace llvm;
@@ -133,7 +117,7 @@ llvm::Instruction *BreakPHIToAllocas(PHINode *phi) {
     Value *val = phi->getIncomingValue(incoming);
     BasicBlock *incomingBB = phi->getIncomingBlock(incoming);
     builder.SetInsertPoint(incomingBB->getTerminator());
-    llvm::Instruction *store = builder.CreateStore(val, alloca);
+    builder.CreateStore(val, alloca);
   }
   builder.SetInsertPoint(phi);
 
@@ -164,7 +148,6 @@ void phi2alloc(llvm::Module *M) {
       }
     }
 
-    bool changed = false;
     for (InstructionVec::iterator i = PHIs.begin(); i != PHIs.end(); ++i) {
       Instruction *instr = *i;
       BreakPHIToAllocas(dyn_cast<PHINode>(instr));
@@ -279,9 +262,7 @@ void replace_built_in_function(llvm::Module *M) {
 
     for (auto BB = F->begin(); BB != F->end(); ++BB) {
       for (auto BI = BB->begin(); BI != BB->end(); BI++) {
-        if (auto Load = dyn_cast<LoadInst>(BI)) {
-          auto load_from = Load->getOperand(0);
-        } else if (auto Call = dyn_cast<CallInst>(BI)) {
+        if (auto Call = dyn_cast<CallInst>(BI)) {
           if (Call->getCalledFunction()) {
             auto func_name = Call->getCalledFunction()->getName().str();
             if (func_name == "llvm.nvvm.read.ptx.sreg.ntid.x" ||
@@ -425,7 +406,6 @@ void replace_built_in_function(llvm::Module *M) {
         if (auto Call = dyn_cast<CallInst>(BI)) {
           if (Call->getCalledFunction()) {
             auto func_name = Call->getCalledFunction()->getName().str();
-            auto callFn = Call->getCalledFunction();
             if (func_name == "vprintf") {
               /*
                * replace CUDA's printf to C's printf
@@ -458,7 +438,7 @@ void replace_built_in_function(llvm::Module *M) {
                     dyn_cast<PointerType>(BC->getOperand(0)->getType());
                 auto SrcTy = SrcPointTy->getElementType();
                 // reverse the bitcast
-                auto reverse_BC = new BitCastInst(BC, SrcPointTy, "", Call);
+                new BitCastInst(BC, SrcPointTy, "", Call);
                 assert(SrcTy->isStructTy() == 1);
                 auto StructTy = dyn_cast<StructType>(SrcTy);
                 for (int i = 0; i < StructTy->getNumElements(); i++) {
@@ -528,7 +508,6 @@ void replace_built_in_function(llvm::Module *M) {
 
 void replace_asm_call(llvm::Module *M) {
   LLVMContext &context = M->getContext();
-  auto I32 = llvm::Type::getInt32Ty(context);
   std::vector<CallInst *> need_remove;
   for (Module::iterator i = M->begin(), e = M->end(); i != e; ++i) {
     Function *F = &(*i);

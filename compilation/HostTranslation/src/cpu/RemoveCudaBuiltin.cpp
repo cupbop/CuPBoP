@@ -3,16 +3,8 @@
  */
 #include "RemoveCudaBuiltin.h"
 #include "debug.hpp"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/GlobalValue.h"
-#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instructions.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
 #include "llvm/Support/ToolOutputFile.h"
-#include "llvm/Transforms/Utils/CtorUtils.h"
-#include <iostream>
-#include <map>
 #include <set>
 
 using namespace llvm;
