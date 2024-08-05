@@ -37,9 +37,7 @@ For building CUDA toolkit, please refer to <https://developer.nvidia.com/cuda-do
    ```bash
    mkdir build && cd build
    #set -DDEBUG=ON for debugging
-   cmake .. \
-      -DLLVM_CONFIG_PATH=`which llvm-config` \
-      -DCUDA_PATH=$CUDA_PATH
+   cmake ..
    make
    ```
 

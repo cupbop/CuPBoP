@@ -9,8 +9,9 @@ if [ ! -d $DATASET_PATH ]; then
     echo "Download Hetero Mark dataset"
     mkdir $DATASET_PATH
     cd $DATASET_PATH
-    wget https://www.dropbox.com/s/ie2hcxw9lfoghg8/data.tar.gz?dl=1
-    tar -xzf 'data.tar.gz?dl=1'
+    pip install gdown
+    gdown https://drive.google.com/uc?id=1IItjFFUIfANgrUUI7jebNS9rfSEe32lZ
+    tar -xzf data.tar.gz
     mv data/* .
 fi
 
@@ -49,9 +50,9 @@ case $1 in
     ./$1 -q -v
     ;;
 
-#   ga)
-#     ./$1 -q -i $DATASET_PATH/ga/1024_64.data -v
-#     ;;
+  ga)
+    ./$1 -q -i $DATASET_PATH/ga/1024_64.data -v
+    ;;
 
   hist)
     ./$1 -q -v

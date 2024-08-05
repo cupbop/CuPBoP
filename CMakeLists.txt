@@ -4,35 +4,33 @@ project(CuPBoP)
 set(CMAKE_PROJECT_DESCRIPTION "Executing CUDA on non-NVIDIA architecture.")
 set(CMAKE_CXX_STANDARD "14")
 
-if(DEFINED LLVM_CONFIG_PATH)
-  if(IS_ABSOLUTE "${LLVM_CONFIG_PATH}")
-    if(EXISTS "${LLVM_CONFIG_PATH}")
-      set(LLVM_CONFIG "${LLVM_CONFIG_PATH}")
-    else()
-      message(FATAL_ERROR "llvm-config is not found in ${LLVM_CONFIG_PATH}")
-    endif()
-    message(STATUS "Using llvm-config: ${LLVM_CONFIG}")
-    execute_process(
-      COMMAND "${LLVM_CONFIG}" "--cxxflags"
-      OUTPUT_VARIABLE LLVM_CXX_FLAG
-      OUTPUT_STRIP_TRAILING_WHITESPACE)
-    execute_process(
-      COMMAND "${LLVM_CONFIG}" "--libdir"
-      OUTPUT_VARIABLE LLVM_LIB_PATH
-      OUTPUT_STRIP_TRAILING_WHITESPACE)
-    execute_process(
-      COMMAND "${LLVM_CONFIG}" "--libs"
-      OUTPUT_VARIABLE LLVM_LINK_FLAG
-      OUTPUT_STRIP_TRAILING_WHITESPACE)
-  endif()
+find_program(LLVM_CONFIG llvm-config)
+if(NOT LLVM_CONFIG)
+  message(FATAL_ERROR "llvm-config not found. Please install LLVM.")
 else()
-  message(FATAL_ERROR "llvm-config is required")
+  message(STATUS "Found llvm-config: ${LLVM_CONFIG}")
+  execute_process(
+    COMMAND "${LLVM_CONFIG}" "--cxxflags"
+    OUTPUT_VARIABLE LLVM_CXX_FLAG
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  execute_process(
+    COMMAND "${LLVM_CONFIG}" "--libdir"
+    OUTPUT_VARIABLE LLVM_LIB_PATH
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  execute_process(
+    COMMAND "${LLVM_CONFIG}" "--libs"
+    OUTPUT_VARIABLE LLVM_LINK_FLAG
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
 endif()
 
 if(DEFINED CUDA_PATH)
-  message(STATUS "Using CUDA: ${CUDA_PATH}")
+  message(STATUS "CUDA_PATH provided: ${CUDA_PATH}")
+elseif(DEFINED ENV{CUDA_PATH})
+  set(CUDA_PATH $ENV{CUDA_PATH})
+  message(STATUS "CUDA_PATH from environment: ${CUDA_PATH}")
 else()
-  message(FATAL_ERROR "CUDA_PATH is required")
+  message(FATAL_ERROR "CUDA_PATH is not provided. Please set CUDA_PATH or
+      define it as an environment variable.")
 endif()
 
 option(DEBUG "Print debug information." OFF)

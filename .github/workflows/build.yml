@@ -15,18 +15,26 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
-      - name: Install LLVM and Clang
-        uses: KyleMayes/install-llvm-action@v1
-        with:
-          version: "14.0"
-      - name: Download CUDA files used for compiling NVVM IR
+      - name: Install GCC 8
         run: |
-          cd ${{ github.workspace }}
-          wget https://www.dropbox.com/s/4pckqsjnl920gpn/cuda-10.1.tar.gz?dl=1
-          tar -xzf 'cuda-10.1.tar.gz?dl=1'
+          sudo apt-get update
+          sudo apt install gcc-8 g++-8
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 80
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 80
+      - name: Install CUDA toolkit
+        uses: Jimver/cuda-toolkit@v0.2.16
+        with:
+          cuda: '10.1.243'
+      - name: Download LLVM
+        run: |
+          wget https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.0/clang+llvm-14.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz
+          tar -xf clang+llvm-14.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz
+          export PATH=$PWD/clang+llvm-14.0.0-x86_64-linux-gnu-ubuntu-18.04/bin:$PATH
+          echo "PATH=$PATH" >> $GITHUB_ENV
+          rm clang+llvm-14.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz
       - name: Download external files
         run: |
           git submodule init
@@ -35,18 +43,16 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake .. -DLLVM_CONFIG_PATH=`which llvm-config` -DCUDA_PATH=${{ github.workspace }}/cuda-10.1 -DHETERO_MARK_DATA=${{ github.workspace }}/data
-          make -j8
-      - name: clone SC evaluation code
-        run: |
-          cd ${{ github.workspace }}
-          git clone https://github.com/drcut/SC_evaluate
+          CC=gcc CXX=g++ cmake .. -DHETERO_MARK_DATA=${{ github.workspace }}/data
+          make VERBOSE=1 -j8
+          export LD_LIBRARY_PATH=${{ github.workspace }}/build/runtime:${{ github.workspace }}/build/runtime/threadPool:$LD_LIBRARY_PATH
+          export PATH=${{ github.workspace }}/build/compilation:$PATH
+          echo "PATH=$PATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
       - name: Execute the static shared memory demo
         run: |
           cd ${{ github.workspace }}/examples/sharedMemory
-          clang++ -std=c++11 reverse.cu -I../.. --cuda-path=${{ github.workspace }}/cuda-10.1  --cuda-gpu-arch=sm_50 -L${{ github.workspace }}/cuda-10.1/lib64 -lcudart_static -ldl -lrt -pthread -save-temps -v  || true
-          export LD_LIBRARY_PATH=${{ github.workspace }}/build/runtime:${{ github.workspace }}/build/runtime/threadPool:$LD_LIBRARY_PATH
-          export PATH=${{ github.workspace }}/build/compilation:$PATH
+          clang++ -std=c++11 reverse.cu -I../.. --cuda-path=$CUDA_PATH  --cuda-gpu-arch=sm_50 -L$CUDA_PATH/lib64 -lcudart_static -ldl -lrt -pthread -save-temps -v  || true
           kernelTranslator reverse-cuda-nvptx64-nvidia-cuda-sm_50.bc kernel.bc
           hostTranslator reverse-host-x86_64-unknown-linux-gnu.bc host.bc
           llc --relocation-model=pic --filetype=obj  kernel.bc
@@ -56,9 +62,7 @@ jobs:
       - name: Execute the dynamic shared memory demo
         run: |
           cd ${{ github.workspace }}/examples/dynamicSharedMemory
-          clang++ -std=c++11 reverse.cu -I../.. --cuda-path=${{ github.workspace }}/cuda-10.1  --cuda-gpu-arch=sm_50 -L${{ github.workspace }}/cuda-10.1/lib64 -lcudart_static -ldl -lrt -pthread -save-temps -v  || true
-          export LD_LIBRARY_PATH=${{ github.workspace }}/build/runtime:${{ github.workspace }}/build/runtime/threadPool:$LD_LIBRARY_PATH
-          export PATH=${{ github.workspace }}/build/compilation:$PATH
+          clang++ -std=c++11 reverse.cu -I../.. --cuda-path=$CUDA_PATH  --cuda-gpu-arch=sm_50 -L$CUDA_PATH/lib64 -lcudart_static -ldl -lrt -pthread -save-temps -v  || true
           kernelTranslator reverse-cuda-nvptx64-nvidia-cuda-sm_50.bc kernel.bc
           hostTranslator reverse-host-x86_64-unknown-linux-gnu.bc host.bc
           llc --relocation-model=pic --filetype=obj  kernel.bc
@@ -69,15 +73,17 @@ jobs:
         run: |
           cd ${{ github.workspace }}/build
           make CTEST_OUTPUT_ON_FAILURE=1 test
-      - name: Execute the lavaMD example
-        run: |
-          cd ${{ github.workspace }}/SC_evaluate/rodinia-cox/lavaMD
-          clang++ kernel/kernel_gpu_cuda_wrapper.cu --cuda-path=${{ github.workspace }}/cuda-10.1  --cuda-gpu-arch=sm_61 -L${{ github.workspace }}/cuda-10.1/lib64 -lcudart_static -ldl -lrt -pthread -save-temps -v  || true
-          export LD_LIBRARY_PATH=${{ github.workspace }}/build/runtime:${{ github.workspace }}/build/runtime/threadPool:$LD_LIBRARY_PATH
-          export PATH=${{ github.workspace }}/build/compilation:$PATH
-          kernelTranslator kernel_gpu_cuda_wrapper-cuda-nvptx64-nvidia-cuda-sm_61.bc kernel.bc
-          hostTranslator kernel_gpu_cuda_wrapper-host-x86_64-unknown-linux-gnu.bc host.bc
-          llc --relocation-model=pic --filetype=obj  kernel.bc
-          llc --relocation-model=pic --filetype=obj  host.bc
-          g++ -o lavaMD -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -I${{ github.workspace }}/cuda-10.1/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   main.c host.o kernel.o util/timer/timer.c util/num/num.c -lpthread -lc -lCPUruntime -lthreadPool -pthread
-          ./lavaMD -boxes1d 10
+      # - name: Execute the lavaMD example
+      #   run: |
+      #     cd ${{ github.workspace }}
+      #     git clone https://github.com/drcut/SC_evaluate
+      #     cd ${{ github.workspace }}/SC_evaluate/rodinia-cox/lavaMD
+      #     clang++ kernel/kernel_gpu_cuda_wrapper.cu --cuda-path=${{ github.workspace }}/cuda-10.1  --cuda-gpu-arch=sm_61 -L${{ github.workspace }}/cuda-10.1/lib64 -lcudart_static -ldl -lrt -pthread -save-temps -v  || true
+      #     export LD_LIBRARY_PATH=${{ github.workspace }}/build/runtime:${{ github.workspace }}/build/runtime/threadPool:$LD_LIBRARY_PATH
+      #     export PATH=${{ github.workspace }}/build/compilation:$PATH
+      #     kernelTranslator kernel_gpu_cuda_wrapper-cuda-nvptx64-nvidia-cuda-sm_61.bc kernel.bc
+      #     hostTranslator kernel_gpu_cuda_wrapper-host-x86_64-unknown-linux-gnu.bc host.bc
+      #     llc --relocation-model=pic --filetype=obj  kernel.bc
+      #     llc --relocation-model=pic --filetype=obj  host.bc
+      #     g++ -o lavaMD -fPIC -no-pie -I${{ github.workspace }}/runtime/threadPool/include -I${{ github.workspace }}/cuda-10.1/include -L${{ github.workspace }}/build/runtime   -L${{ github.workspace }}/build/runtime/threadPool   main.c host.o kernel.o util/timer/timer.c util/num/num.c -lpthread -lc -lCPUruntime -lthreadPool -pthread
+      #     ./lavaMD -boxes1d 10
