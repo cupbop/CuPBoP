@@ -90,8 +90,12 @@ Please refer to [Contribution.md](./CONTRIBUTING.md) for more detail.
 If you want to refer CuPBoP in your projects, please cite the related
 papers:
 
-- [COX: Exposing CUDA Warp-Level Functions to CPUs](https://dl.acm.org/doi/abs/10.1145/3554736)
-- [CuPBoP: CUDA for Parallelized and Broad-range Processors](https://arxiv.org/abs/2206.07896)
+- *Unleashing CPU Potential for Executing GPU Programs through
+  Compiler/Runtime Optimizations*, MICRO 2024
+- [COX: Exposing CUDA Warp-Level Functions to CPUs](https://dl.acm.org/doi/abs/10.1145/3554736),
+  *TACO 2022*
+- [CuPBoP: Making CUDA a Portable Language](https://dl.acm.org/doi/10.1145/3659949),
+  *TODAES 2024*
 
 ## Contributors
 
