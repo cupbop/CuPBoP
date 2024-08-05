@@ -65,13 +65,11 @@ public:
     }
     // implement transformation
     for (auto L : mem_coalescing_loop) {
-      printf("implement\n");
       LLVMContext &context = M->getContext();
       auto I8Ptr = llvm::Type::getInt8PtrTy(context);
       auto I8 = llvm::Type::getInt8Ty(context);
       IRBuilder<> builder(context);
       // create basic blocks
-      printf("create block\n");
       BasicBlock *do_while_latch = BasicBlock::Create(
           context, "do_while_latch", L->getHeader()->getParent());
       BasicBlock *do_while_preheader = BasicBlock::Create(
@@ -82,7 +80,6 @@ public:
       builder.SetInsertPoint(do_while_latch);
       llvm::Instruction *has_activated_thread = createLoad(
           builder, M->getGlobalVariable("has_activated_thread_addr"));
-      has_activated_thread->dump();
       auto branch_var = builder.CreateICmpNE(has_activated_thread,
                                              ConstantInt::get(I8, 0, true));
       builder.CreateCondBr(branch_var, do_while_header, L->getExitBlock());
@@ -94,7 +91,6 @@ public:
       // Part1: do while preheader
       // create a variable thread_activated, to record whether a thread is
       // activated or not
-      printf("Part1\n");
       builder.SetInsertPoint(do_while_preheader);
       llvm::Instruction *thread_activated_addr =
           builder.CreateAlloca(I8, 0, "thread_activated_addr");
@@ -102,7 +98,6 @@ public:
       builder.CreateBr(do_while_header);
       // Part2: do while header
       // set has_activated_thread to false
-      printf("Part2\n");
       builder.SetInsertPoint(do_while_header);
       Instruction *last_inst = builder.CreateStore(
           ConstantInt::get(I8, 0),
@@ -128,18 +123,15 @@ public:
       if (!isa<llvm::CmpInst>(last_inst))
         return 0;
       CreateInterWarpBarrier(last_inst);
-      printf("get here\n");
       // set thread_activated = thread_activated & (cond)
       auto thread_activated = new LoadInst(I8, thread_activated_addr,
                                            "thread_activated", do_while_header);
-      last_inst->dump();
       last_inst = llvm::CastInst::CreateIntegerCast(last_inst, I8, false, "",
                                                     do_while_header);
       auto and_result = BinaryOperator::Create(
           Instruction::And, last_inst, thread_activated, "", do_while_header);
       new StoreInst(and_result, thread_activated_addr, do_while_header);
       // has_activated_thread |= and_result
-      printf("get here2\n");
       has_activated_thread =
           new LoadInst(I8, M->getGlobalVariable("has_activated_thread_addr"),
                        "has_activated_thread", do_while_header);
@@ -150,25 +142,21 @@ public:
                     M->getGlobalVariable("has_activated_thread_addr"),
                     do_while_header);
       // create branch
-      printf("create branch");
       auto branch_res =
           new ICmpInst(*do_while_header, llvm::CmpInst::Predicate::ICMP_NE,
                        and_result, ConstantInt::get(I8, 0));
       llvm::BranchInst::Create(loop_body, do_while_latch, branch_res,
                                do_while_header);
       // Part3: replace original loop's latches target
-      printf("part3\n");
       if (auto latch = L->getLoopLatch()) {
         auto t = dyn_cast<BranchInst>(latch->getTerminator());
         assert(t->isUnconditional());
-        t->dump();
         t->setSuccessor(0, do_while_latch);
       }
       // Part4: remove useless block: loop header, as it has been copied to
       // do_while_header
       DeleteDeadBlocks(loop_cond);
     }
-    printf("return\n");
     return 1;
   }
 };

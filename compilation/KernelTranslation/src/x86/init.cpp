@@ -167,6 +167,11 @@ void create_global_variable(llvm::Module *M) {
       *M, VoteArrayType, false, llvm::GlobalValue::ExternalLinkage, NULL,
       "warp_vote", NULL, llvm::GlobalValue::GeneralDynamicTLSModel, 0, false);
   warp_vote->setAlignment(llvm::MaybeAlign(32));
+  // TLS variable used for global memory coalescing optimization
+  new llvm::GlobalVariable(*M, I8, false, llvm::GlobalValue::ExternalLinkage,
+                           llvm::ConstantInt::get(I8, 0, true),
+                           "has_activated_thread_addr", NULL,
+                           llvm::GlobalValue::GeneralDynamicTLSModel, 0, false);
 }
 
 void remove_metadata(llvm::Module *M) {
@@ -302,7 +307,6 @@ bool lower_constant_expr(llvm::Module *M) {
 }
 
 void replace_cuda_math_built_in(llvm::Module *M) {
-  // replace _ZL3expd, just delete its body
   for (Module::iterator i = M->begin(), e = M->end(); i != e; ++i) {
     Function *F = &(*i);
     auto func_name = F->getName().str();

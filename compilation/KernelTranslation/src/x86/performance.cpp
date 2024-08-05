@@ -119,7 +119,7 @@ void performance_optimization(llvm::Module *M) {
   Options.FloatABIType = FloatABI::Hard;
 
   TargetMachine *TM = TheTarget->createTargetMachine(
-      triple.getTriple(), llvm::sys::getHostCPUName().str(), StringRef("+m,+f"),
+      triple.getTriple(), llvm::sys::getHostCPUName().str(), StringRef(""),
       Options, Reloc::PIC_, CodeModel::Small, CodeGenOpt::Aggressive);
   assert(TM && "No Machine Information\n");
 
@@ -155,7 +155,6 @@ bool linear_with_blockDim(llvm::Instruction *inst,
     if (Function *calledFunction = callInst->getCalledFunction()) {
       if (calledFunction->getName().startswith(
               "llvm.nvvm.read.ptx.sreg.ntid")) {
-        printf("find!\n");
         result = true;
       }
     } else {
@@ -187,13 +186,9 @@ bool linear_with_blockDim(llvm::Instruction *inst,
     result = all_linear_with_blockDim;
   } else if (auto storeInst = llvm::dyn_cast<llvm::StoreInst>(inst)) {
     if (isa<llvm::Instruction>(storeInst->getOperand(0)))
-
       result = linear_with_blockDim(
           dyn_cast<llvm::Instruction>(storeInst->getOperand(0)), visited);
   }
-  // printf("check:\n");
-  // inst->dump();
-  // printf("%d\n", result);
   return result;
 }
 /*
@@ -219,8 +214,8 @@ bool linear_related(llvm::Instruction *src, llvm::Instruction *des) {
  * threadIdx and the index is the -1 dimension;
  */
 bool loop_contains_global_memory_coalescing(llvm::Loop *L) {
-  printf("check loop:\n");
-  L->dump();
+  printf("check loop with header: %s\n",
+         L->getHeader()->getName().str().c_str());
   // find iteration variable
   auto loop_latch = L->getLoopLatch();
   auto F = loop_latch->getParent();
@@ -242,21 +237,19 @@ bool loop_contains_global_memory_coalescing(llvm::Loop *L) {
     }
   }
   if (!iteration_var) {
-    printf("cannot find iteration var\n");
+    // cannot find iteration variable
     exit(1);
   }
-  iteration_var->dump();
-  inc_inst->dump();
 
   // check whether the stride is a linear function of blockDim
   std::set<llvm::Instruction *> visited;
   if (!linear_with_blockDim(inc_inst, visited)) {
+    // the stride is not linear with blockDim
     printf("not linear with block\n");
     return false;
   }
-  printf("is linear with block\n");
-  // check whether contains GEP insturction, with iteration_var as the last
-  // dimension
+  // check whether the loop contains GEP insturction, with iteration_var as the
+  // last dimension
   for (Loop::block_iterator i = L->block_begin(), e = L->block_end(); i != e;
        ++i) {
     for (BasicBlock::iterator j = (*i)->begin(), e = (*i)->end(); j != e; ++j) {
@@ -264,7 +257,7 @@ bool loop_contains_global_memory_coalescing(llvm::Loop *L) {
         auto last_dim = GEP->getOperand(GEP->getNumIndices());
         if (auto last_dim_var = dyn_cast<llvm::Instruction>(last_dim)) {
           if (linear_related(iteration_var, last_dim_var)) {
-            printf("is mem coalsce\n");
+            printf("Find global memory coalescing\n");
             return true;
           }
         }

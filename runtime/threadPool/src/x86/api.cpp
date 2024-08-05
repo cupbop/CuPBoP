@@ -23,8 +23,6 @@ int init_device() {
     return C_ERROR_MEMALLOC;
 
   device->max_compute_units = std::thread::hardware_concurrency();
-  // device->max_compute_units = 16;
-  printf("%d concurrent threads are supported.\n", device->max_compute_units);
   device_max_compute_units = device->max_compute_units;
 
   // initialize scheduler

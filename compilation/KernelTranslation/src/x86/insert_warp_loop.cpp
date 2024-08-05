@@ -697,8 +697,6 @@ public:
             is_single_conditional_branch_block = 1;
           } else {
             // generate by replicate local variable
-            printf(
-                "[WARNING] match single conditional branch with HARD CODE\n");
             bool branch_to_intra_init = false;
             for (unsigned suc = 0; suc < br->getNumSuccessors(); ++suc) {
               llvm::BasicBlock *entryCandidate = br->getSuccessor(suc);

@@ -3,7 +3,7 @@
 
 #include "llvm/IR/Module.h"
 
-void generate_x86_format(llvm::Module *M);
+void generate_x86_format(llvm::Module *M, llvm::Module *host_module);
 
 void set_meta_data(llvm::Module *M);
 
