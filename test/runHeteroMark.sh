@@ -9,10 +9,9 @@ if [ ! -d $DATASET_PATH ]; then
     echo "Download Hetero Mark dataset"
     mkdir $DATASET_PATH
     cd $DATASET_PATH
-    pip install gdown
-    gdown https://drive.google.com/uc?id=1IItjFFUIfANgrUUI7jebNS9rfSEe32lZ
-    tar -xzf data.tar.gz
-    mv data/* .
+    wget https://heteromark.s3.us-east-2.amazonaws.com/hmark-data.zip
+    unzip hmark-data.zip
+    mv hmark-data/* .
 fi
 
 mkdir -p $TestCase
@@ -28,7 +27,10 @@ hostTranslator $1_cuda_benchmark-host-x86_64-unknown-linux-gnu.bc host.bc
 llc --relocation-model=pic --filetype=obj  kernel.bc
 llc --relocation-model=pic --filetype=obj  host.bc
 g++ -o $1 -fPIC -no-pie \
-    $HeteroMark_PATH/src/$1/cuda/main.cc host.o kernel.o $HeteroMark_PATH/src/$1/*.cc  $HeteroMark_PATH/src/common/benchmark/*.cc \
+    $HeteroMark_PATH/src/$1/cuda/main.cc \
+    host.o kernel.o \
+    $HeteroMark_PATH/src/$1/*.cc \
+    $HeteroMark_PATH/src/common/benchmark/*.cc \
     $HeteroMark_PATH/src/common/command_line_option/*.cc  $HeteroMark_PATH/src/common/time_measurement/*.cc \
     -L$CuPBoP_BUILD_PATH/runtime   -L$CuPBoP_BUILD_PATH/runtime/threadPool \
     -I$HeteroMark_PATH -I$CUDA_PATH/include -lpthread -lc -lCPUruntime -lthreadPool
